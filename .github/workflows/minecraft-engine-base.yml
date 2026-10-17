@@ -34,7 +34,7 @@ jobs:
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
       - name: Install Android SDK packages
-        run: sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "platform-tools"
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Configure HTTPS for upstream submodules
         run: git config --global url."https://github.com/".insteadOf "git@github.com:"
@@ -47,6 +47,18 @@ jobs:
           git -C upstream/Amethyst-Android submodule update --init --recursive
           git -C upstream/Amethyst-Android rev-parse HEAD | tee upstream-commit.txt
           test "$(cat upstream-commit.txt)" = "330c6eae3164df64bdc4828e946a9e62cc5169e4"
+
+      - name: Adapt compile SDK to currently published Android platform
+        working-directory: upstream/Amethyst-Android
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("app_pojavlauncher/build.gradle")
+          content = path.read_text()
+          if "compileSdk = 37" not in content:
+              raise SystemExit("Expected pinned upstream compileSdk declaration was not found")
+          path.write_text(content.replace("compileSdk = 37", "compileSdk = 36", 1))
+          PY
 
       - name: Build upstream Android launcher
         working-directory: upstream/Amethyst-Android
