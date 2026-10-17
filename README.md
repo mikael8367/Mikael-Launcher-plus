@@ -52,6 +52,12 @@ O botão **Baixar e verificar assets** lê o índice oficial da versão Vanilla,
 
 O diagnóstico de instância passa a consultar o registro dos assets e recalcular o SHA-1 do índice. Ele não recalcula cada asset na checagem rápida, e o resultado **não significa que o Minecraft já pode iniciar**: ainda faltam bibliotecas, runtime Java e integração à pasta real de jogo do motor. Consulte [a documentação da etapa 7](docs/VANILLA-ASSETS.md).
 
+## Etapa 8 — bibliotecas Java Vanilla
+
+O botão **Baixar e verificar bibliotecas** resolve os artefatos Java declarados no manifesto oficial da versão Vanilla, aplica as regras de plataforma, baixa os JARs com SHA-1/tamanho obrigatórios e grava um manifesto local com o que foi verificado e o que ficou pendente. O download possui progresso e cancelamento e preserva arquivos completos verificados para novas tentativas.
+
+A etapa **não instala classificadores nativos nem runtime Java** e não liga ainda a pasta privada ao diretório ativo do motor. Por isso, o relatório pode indicar bibliotecas parciais e nunca marca a instância como jogável. Consulte [a documentação da etapa 8](docs/VANILLA-LIBRARIES.md).
+
 ## Workflows
 
 - [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): valida a compilação do código Java e não empacota APK.
