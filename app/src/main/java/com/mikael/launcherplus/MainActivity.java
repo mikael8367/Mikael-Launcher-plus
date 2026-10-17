@@ -71,6 +71,9 @@ public final class MainActivity extends Activity {
     private TextView instancesOutput;
     private InstanceManager instanceManager;
     private InstanceModManager instanceModManager;
+    private VersionArtifactInstaller versionArtifactInstaller;
+    private Button stageVanillaButton;
+    private TextView installStatusOutput;
     private TextView modsOutput;
     private boolean updatingInstances = false;
     private String lastMetadataText = "";
@@ -326,6 +329,19 @@ public final class MainActivity extends Activity {
         instancesOutputParams.topMargin = dp(8);
         instancesCard.addView(instancesOutput, instancesOutputParams);
 
+        installStatusOutput = text(
+                "Instalação real: ainda não iniciada. O próximo passo baixa e verifica apenas os metadados oficiais e o JAR do cliente Vanilla.",
+                13, MUTED, false);
+        LinearLayout.LayoutParams installStatusParams = params(-1, -2);
+        installStatusParams.topMargin = dp(10);
+        instancesCard.addView(installStatusOutput, installStatusParams);
+
+        stageVanillaButton = button("BAIXAR ARQUIVOS OFICIAIS VANILLA", true);
+        LinearLayout.LayoutParams stageVanillaParams = params(-1, dp(50));
+        stageVanillaParams.topMargin = dp(8);
+        instancesCard.addView(stageVanillaButton, stageVanillaParams);
+        stageVanillaButton.setOnClickListener(v -> stageVanillaArtifacts());
+
         Button deleteInstanceButton = button("EXCLUIR INSTÂNCIA SELECIONADA", true);
         LinearLayout.LayoutParams deleteInstanceParams = params(-1, dp(48));
         deleteInstanceParams.topMargin = dp(10);
@@ -335,11 +351,13 @@ public final class MainActivity extends Activity {
         try {
             instanceManager = new InstanceManager(this);
             instanceModManager = new InstanceModManager(instanceManager);
+            versionArtifactInstaller = new VersionArtifactInstaller(instanceManager);
             refreshInstancesList();
         } catch (Exception exception) {
             instancesOutput.setText("Gerenciador de instâncias indisponível: " + safeExceptionMessage(exception));
             createInstanceButton.setEnabled(false);
             deleteInstanceButton.setEnabled(false);
+            if (stageVanillaButton != null) stageVanillaButton.setEnabled(false);
         }
 
         LinearLayout modsCard = new LinearLayout(this);
@@ -741,6 +759,73 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void stageVanillaArtifacts() {
+        final String instanceName = selectedInstanceName();
+        if (instanceManager == null || versionArtifactInstaller == null || instanceName == null) {
+            Toast.makeText(this, "Crie ou selecione uma instância primeiro.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (loaderSpinner == null || !"Vanilla".equals(String.valueOf(loaderSpinner.getSelectedItem()))) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Escolha Vanilla")
+                    .setMessage("Esta etapa instala apenas arquivos do cliente Vanilla. Forge, Fabric e OptiFine serão tratados em outra etapa.")
+                    .setPositiveButton("Entendi", (dialog, which) -> dialog.dismiss())
+                    .show();
+            return;
+        }
+        final String version = getSelectedVersionForVanillaTest();
+        final String metadataUrl = getSelectedVersionMetadataUrl(version);
+        if (version.isEmpty() || metadataUrl == null) {
+            Toast.makeText(this, "Consulte o manifesto oficial e selecione uma versão primeiro.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (stageVanillaButton != null) {
+            stageVanillaButton.setEnabled(false);
+            stageVanillaButton.setText("BAIXANDO E VERIFICANDO...");
+        }
+        if (installStatusOutput != null) {
+            installStatusOutput.setText("Baixando metadados oficiais e JAR do cliente para " + instanceName
+                    + " (" + version + "). O jogo ainda não ficará pronto para iniciar.");
+        }
+        ioExecutor.execute(() -> {
+            String resultText;
+            boolean success = false;
+            try {
+                JSONObject result = versionArtifactInstaller.stageVanillaClient(instanceName, version, metadataUrl);
+                long bytes = result.optLong("clientBytes", 0L);
+                resultText = "Arquivos do cliente verificados para " + version
+                        + "\\nTamanho: " + (bytes / (1024L * 1024L)) + " MB"
+                        + "\\nSHA-1: " + result.optString("clientSha1", "")
+                        + "\\nEstado: arquivos staged, não jogável ainda."
+                        + "\\nFaltam bibliotecas, assets, runtime Java e conexão com a pasta ativa do motor.";
+                success = true;
+            } catch (Exception exception) {
+                resultText = "Falha ao baixar/verificar " + version + ": " + safeExceptionMessage(exception);
+            }
+            final String message = resultText;
+            final boolean completed = success;
+            mainHandler.post(() -> {
+                if (installStatusOutput != null) installStatusOutput.setText(message);
+                if (stageVanillaButton != null) {
+                    stageVanillaButton.setEnabled(true);
+                    stageVanillaButton.setText("BAIXAR ARQUIVOS OFICIAIS VANILLA");
+                }
+                refreshInstancesList();
+                Toast.makeText(this, completed ? "Arquivos oficiais baixados e verificados." : "Instalação parcial falhou.",
+                        Toast.LENGTH_LONG).show();
+            });
+        });
+    }
+
+    private String getSelectedVersionMetadataUrl(String version) {
+        synchronized (visibleVersionIds) {
+            int index = visibleVersionIds.indexOf(version);
+            if (index < 0 || index >= visibleVersionUrls.size()) return null;
+            String url = visibleVersionUrls.get(index);
+            return url != null && url.startsWith("https://piston-meta.mojang.com/") ? url : null;
+        }
+    }
+
     private void refreshInstancesList() {
         if (instanceManager == null || instanceSpinner == null || instancesOutput == null) return;
         try {
@@ -802,7 +887,9 @@ public final class MainActivity extends Activity {
                     + "\\nVersão escolhida: " + selectedRecord.optString("version", "—")
                     + "\\nPerfil de carregador: " + selectedRecord.optString("loader", "Vanilla")
                     + "\\nPasta privada: " + selectedRecord.optString("relativePath", "instances")
-                    + "\\nEstado: perfil criado; jogo e carregador não instalados.");
+                    + "\\nEstado: " + selectedRecord.optString("installStatus", "perfil criado; instalação não iniciada")
+                    + "\\nVersão baixada: " + selectedRecord.optString("stagedVersion", "nenhuma")
+                    + "\\nJogo jogável: não; arquivos de cliente, bibliotecas/assets/runtime e ligação ao motor ainda incompletos.");
         } catch (Exception exception) {
             instancesOutput.setText("Erro ao ler os detalhes: " + safeExceptionMessage(exception));
         }
