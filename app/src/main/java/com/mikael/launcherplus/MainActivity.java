@@ -155,11 +155,12 @@ public final class MainActivity extends Activity {
         TextView previewTag = text("PRÉVIA", 10, BACKGROUND, true);
         previewTag.setGravity(Gravity.CENTER);
         previewTag.setPadding(dp(10), dp(7), dp(10), dp(7));
-        previewTag.setBackground(roundRect(EMERALD, 12, 0xFF4AF0B0, 1));
+        previewTag.setTextColor(EMERALD);
+        previewTag.setBackground(roundRect(EMERALD_DIM, 12, BORDER, 1));
         brandRow.addView(previewTag, params(-2, -2));
         page.addView(brandRow);
 
-        TextView title = text("Seu Minecraft.\\nDo seu jeito.", 29, TEXT, true);
+        TextView title = text("Seu Minecraft.\nDo seu jeito.", 29, TEXT, true);
         LinearLayout.LayoutParams titleParams = params(-1, -2);
         titleParams.topMargin = dp(22);
         page.addView(title, titleParams);
