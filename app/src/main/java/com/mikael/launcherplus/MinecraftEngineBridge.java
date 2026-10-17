@@ -3,7 +3,6 @@ package com.mikael.launcherplus;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 
 /**
  * Handoff to the real Amethyst/Pojav Minecraft Java engine.
@@ -19,11 +18,6 @@ public final class MinecraftEngineBridge {
             "com.mikael.launcherplus.extra.REQUESTED_LOADER";
     public static final String EXTRA_REQUESTED_PROFILE_NAME =
             "com.mikael.launcherplus.extra.REQUESTED_PROFILE_NAME";
-
-    private static final String[] ENGINE_PACKAGES = {
-            "org.angelauramc.amethyst.debug",
-            "org.angelauramc.amethyst"
-    };
 
     private MinecraftEngineBridge() { }
 
@@ -45,19 +39,9 @@ public final class MinecraftEngineBridge {
             }
         }
 
-        PackageManager packageManager = activity.getPackageManager();
-        for (String packageName : ENGINE_PACKAGES) {
-            try {
-                Intent launchIntent = packageManager.getLaunchIntentForPackage(packageName);
-                if (launchIntent == null) continue;
-                launchIntent.putExtra(EXTRA_REQUESTED_VERSION, requestedVersion);
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                activity.startActivity(launchIntent);
-                return true;
-            } catch (ActivityNotFoundException | SecurityException ignored) {
-                // Continue checking the next explicitly supported engine package.
-            }
-        }
+        // Never open a separately installed Amethyst app: its launch intent exposes
+        // the Amethyst interface and does not guarantee the requested version will start.
+        // Minecraft must be started by the engine integrated into this application.
         return false;
     }
 
