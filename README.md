@@ -23,7 +23,7 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 - [ ] Validar compilação do código Java do app no GitHub Actions sem gerar APK.
 - [ ] Executar o modo `validate` do workflow do motor para verificar a integração sem gerar APK.
 - [ ] Depois da validação de código, testar o motor integrado em aparelho físico; a geração do APK só pode ocorrer após autorização explícita.
-- [ ] Testar instalação e início de Minecraft em dispositivo físico.
+- [ ] Executar o teste ponta a ponta de Minecraft Vanilla em dispositivo físico conforme [docs/VANILLA-TEST.md](docs/VANILLA-TEST.md).
 - [ ] Validar versões, loaders, contas, instâncias e mods.
 
 ## Instâncias locais
@@ -31,6 +31,10 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 Os perfis são criados dentro do diretório privado do app (`files/instances/`), com um arquivo `instance.json` e diretórios de preparação. A seleção do loader é somente metadado do perfil: Forge/Fabric/OptiFine não são instalados por esse recurso. Arquivos JAR podem ser copiados para `mods/`, listados e removidos, mas ainda não são ligados à pasta real de jogo do motor.
 
 O botão **Iniciar Minecraft** tenta abrir o app Amethyst/Pojav se estiver instalado. No APK integrado preparado pelo workflow manual, o botão chama a tela de inicialização de armazenamento do próprio motor. Isso abre o launcher do motor; autenticação, download da versão e toque em Jogar ainda são necessários para entrar no mundo.
+
+## Etapa 2 — teste Vanilla
+
+O dashboard agora tem o botão **Testar Minecraft Vanilla**. Ele mostra a versão selecionada nesta tela e orienta a continuar no motor. A versão não é transferida automaticamente, e o dashboard ainda não instala o jogo. A etapa só será concluída quando Minecraft Vanilla iniciar e um mundo carregar em um aparelho físico. Consulte [o procedimento de teste](docs/VANILLA-TEST.md).
 
 ## Workflows
 
