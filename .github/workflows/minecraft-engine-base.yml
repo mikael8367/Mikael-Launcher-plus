@@ -1,8 +1,17 @@
 name: Minecraft engine base (Amethyst)
 
 on:
-  # Deliberately manual: this workflow produces an APK and must only run when Mikael requests it.
+  # Manual only. The default validates integration source without packaging an APK.
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Etapa: validar a integração sem APK ou compilar APK (somente quando autorizado)"
+        required: true
+        type: choice
+        options:
+          - validate
+          - build
+        default: validate
 
 permissions:
   contents: read
@@ -137,11 +146,18 @@ jobs:
           grep -q 'android:name="com.mikael.launcherplus.MainActivity"' \
             upstream/Amethyst-Android/app_pojavlauncher/src/main/AndroidManifest.xml
 
-      - name: Build upstream Android launcher
+      - name: Validate integrated Java source without packaging APK
+        if: inputs.mode == 'validate'
+        working-directory: upstream/Amethyst-Android
+        run: ./gradlew --no-daemon --stacktrace :app_pojavlauncher:compileDebugJavaWithJavac
+
+      - name: Build upstream Android launcher (APK generation authorized only by explicit mode)
+        if: inputs.mode == 'build'
         working-directory: upstream/Amethyst-Android
         run: ./gradlew --no-daemon --stacktrace :app_pojavlauncher:assembleDebug
 
-      - name: Upload upstream engine APK and build provenance
+      - name: Upload APK and build provenance
+        if: inputs.mode == 'build'
         uses: actions/upload-artifact@v4
         with:
           name: mikael-launcher-plus-engine-test-debug
