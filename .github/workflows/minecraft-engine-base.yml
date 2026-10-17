@@ -239,8 +239,8 @@ jobs:
           launcher = root / "LauncherActivity.java"
           text = launcher.read_text()
           text = text.replace(
-              "import android.os.Bundle;\\n",
-              "import android.os.Bundle;\\nimport android.os.Handler;\\nimport android.os.Looper;\\n",
+              "import android.os.Bundle;",
+              "import android.os.Bundle;" + chr(10) + "import android.os.Handler;" + chr(10) + "import android.os.Looper;",
               1
           )
           field_anchor = "    private mcAccountSpinner mAccountSpinner;"
