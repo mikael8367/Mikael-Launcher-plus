@@ -794,10 +794,10 @@ public final class MainActivity extends Activity {
                 JSONObject result = versionArtifactInstaller.stageVanillaClient(instanceName, version, metadataUrl);
                 long bytes = result.optLong("clientBytes", 0L);
                 resultText = "Arquivos do cliente verificados para " + version
-                        + "\\nTamanho: " + (bytes / (1024L * 1024L)) + " MB"
-                        + "\\nSHA-1: " + result.optString("clientSha1", "")
-                        + "\\nEstado: arquivos staged, não jogável ainda."
-                        + "\\nFaltam bibliotecas, assets, runtime Java e conexão com a pasta ativa do motor.";
+                        + "\nTamanho: " + (bytes / (1024L * 1024L)) + " MB"
+                        + "\nSHA-1: " + result.optString("clientSha1", "")
+                        + "\nEstado: arquivos staged, não jogável ainda."
+                        + "\nFaltam bibliotecas, assets, runtime Java e conexão com a pasta ativa do motor.";
                 success = true;
             } catch (Exception exception) {
                 resultText = "Falha ao baixar/verificar " + version + ": " + safeExceptionMessage(exception);
