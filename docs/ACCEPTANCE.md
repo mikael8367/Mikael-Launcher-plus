@@ -9,7 +9,10 @@ Status possíveis: APROVADA, REPROVADA, NÃO TESTADA, NÃO IMPLEMENTADA.
 | APK instala e abre | NÃO TESTADA | Teste em dispositivo Android |
 | Preferência de versão/filtro | IMPLEMENTADA NO CÓDIGO; teste de fechar/reabrir NÃO TESTADO | Seleção salva em SharedPreferences e restaurada após reinício |
 | Manifesto real de versões | IMPLEMENTADA NO CÓDIGO; teste de rede em dispositivo NÃO TESTADO | Consultar manifesto oficial e confirmar conteúdo recebido |
-| Perfis locais de instância | IMPLEMENTADO NO CÓDIGO; teste em Android NÃO TESTADO | Criar, fechar/reabrir, selecionar, excluir e verificar diretórios privados |\n| Importação/listagem/remoção de JARs | IMPLEMENTADA NO CÓDIGO; teste em Android NÃO TESTADO | Importar JAR confiável, rejeitar extensão inválida/duplicada/maior que 250 MB, conferir SHA-256 e excluir |\n| Botão Iniciar Minecraft | PONTE IMPLEMENTADA; não testada em dispositivo | Abrir motor Amethyst/Pojav instalado; exibir orientação quando não instalado |\n| Interface Mikael integrada ao motor | SCRIPT MANUAL PREPARADO; NÃO EXECUTADO | Build manual, instalar APK, iniciar motor e comprovar fluxo de conta/versão/Jogar |
+| Perfis locais de instância | IMPLEMENTADO NO CÓDIGO; teste em Android NÃO TESTADO | Criar, fechar/reabrir, selecionar, excluir e verificar diretórios privados |
+| Importação/listagem/remoção de JARs | IMPLEMENTADA NO CÓDIGO; teste em Android NÃO TESTADO | Importar JAR confiável, rejeitar extensão inválida/duplicada/maior que 250 MB, conferir SHA-256 e excluir |
+| Botão Iniciar Minecraft | PONTE IMPLEMENTADA; não testada em dispositivo | Abrir motor Amethyst/Pojav instalado; exibir orientação quando não instalado |
+| Interface Mikael integrada ao motor | SCRIPT MANUAL PREPARADO; NÃO EXECUTADO | Build manual, instalar APK, iniciar motor e comprovar fluxo de conta/versão/Jogar |
 | Download e verificação de arquivos | NÃO IMPLEMENTADA | Hash/tamanho comparado com metadados oficiais |
 | Runtime Java Android | NÃO IMPLEMENTADA | Runtime compatível instalado e executado |
 | Minecraft Vanilla inicia | AINDA NÃO COMPROVADO | No motor integrado, concluir autenticação/download, tocar Jogar, verificar processo e logs reais |
