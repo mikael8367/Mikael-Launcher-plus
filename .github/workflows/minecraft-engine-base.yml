@@ -353,6 +353,581 @@ jobs:
           launcher.write_text(text)
           PY
 
+      - name: Replace Amethyst installer screens with Mikael install controller
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          
+          root = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch")
+          launcher_path = root / "LauncherActivity.java"
+          source = launcher_path.read_text()
+          
+          extra_imports = [
+              "import android.widget.LinearLayout;",
+              "import android.widget.ProgressBar;",
+              "import android.widget.TextView;",
+              "import androidx.appcompat.app.AlertDialog;",
+              "import net.kdt.pojavlaunch.modloaders.FabricVersion;",
+              "import net.kdt.pojavlaunch.modloaders.FabriclikeDownloadTask;",
+              "import net.kdt.pojavlaunch.modloaders.FabriclikeUtils;",
+              "import net.kdt.pojavlaunch.modloaders.ForgeDownloadTask;",
+              "import net.kdt.pojavlaunch.modloaders.ForgeUtils;",
+              "import net.kdt.pojavlaunch.modloaders.ModloaderDownloadListener;",
+              "import net.kdt.pojavlaunch.modloaders.NeoForgeDownloadTask;",
+              "import net.kdt.pojavlaunch.modloaders.OptiFineDownloadTask;",
+              "import net.kdt.pojavlaunch.modloaders.OptiFineUtils;",
+              "import java.io.FileInputStream;",
+              "import java.io.FileOutputStream;",
+              "import java.io.File;",
+              "import java.io.IOException;",
+              "import java.util.List;"
+          ]
+          package_end = source.find("\n")
+          missing_imports = [item for item in extra_imports if item not in source]
+          if missing_imports:
+              source = source[:package_end + 1] + "\n" + "\n".join(missing_imports) + "\n" + source[package_end + 1:]
+          
+          field_anchor = "    private mcAccountSpinner mAccountSpinner;"
+          if source.count(field_anchor) != 1:
+              raise SystemExit("Expected exactly one engine account-spinner field")
+          if "private AlertDialog mikaelInstallProgressDialog;" not in source:
+              source = source.replace(field_anchor, "    private AlertDialog mikaelInstallProgressDialog;\\n" + field_anchor, 1)
+          
+          guard_old = "    private void maybeLaunchMikaelRequestedVersion() {\n        if (mikaelRequestedVersion == null || mikaelLaunchScheduled) return;"
+          guard_new = "    private void maybeLaunchMikaelRequestedVersion() {\n        if (mikaelRequestedLoader != null && !\"Vanilla\".equals(mikaelRequestedLoader)) return;\n        if (mikaelRequestedVersion == null || mikaelLaunchScheduled) return;"
+          if source.count(guard_old) != 1:
+              raise SystemExit("Expected the vanilla launch guard insertion point")
+          source = source.replace(guard_old, guard_new, 1)
+          
+          method_anchor = '    private void maybeLaunchMikaelRequestedVersion() {'
+          if source.count(method_anchor) != 1:
+              raise SystemExit("Expected exactly one version launch method")
+          methods = r'''    private void maybeOpenMikaelRequestedLoaderInstaller() {
+                  if (mikaelRequestedLoader == null || mikaelLoaderNavigationScheduled || isFinishing()) return;
+                  if ("Vanilla".equals(mikaelRequestedLoader)) {
+                      mikaelRequestedLoader = null;
+                      getIntent().removeExtra("com.mikael.launcherplus.extra.REQUESTED_LOADER");
+                      return;
+                  }
+                  mikaelLoaderNavigationScheduled = true;
+                  new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                      mikaelLoaderNavigationScheduled = false;
+                      if (mikaelRequestedLoader == null || isFinishing()) return;
+                      final String loader = mikaelRequestedLoader;
+                      final String gameVersion = mikaelRequestedVersion;
+                      mikaelRequestedLoader = null;
+                      mikaelRequestedVersion = null;
+                      getIntent().removeExtra("com.mikael.launcherplus.extra.REQUESTED_LOADER");
+                      getIntent().removeExtra("com.mikael.launcherplus.extra.REQUESTED_VERSION");
+                      if (gameVersion == null || !gameVersion.matches("[A-Za-z0-9._-]{1,100}")) {
+                          showMikaelInstallError("A versão selecionada do Minecraft é inválida.", null);
+                          return;
+                      }
+                      try { LauncherProfiles.load(); } catch (Exception ignored) { }
+                      if ("Fabric".equals(loader) || "Quilt".equals(loader)) {
+                          startMikaelFabriclikeInstall(loader, gameVersion);
+                      } else if ("Forge".equals(loader)) {
+                          startMikaelForgeInstall(gameVersion, false);
+                      } else if ("Forge + OptiFine".equals(loader)) {
+                          startMikaelForgeInstall(gameVersion, true);
+                      } else if ("NeoForge".equals(loader)) {
+                          startMikaelNeoForgeInstall(gameVersion);
+                      } else if ("OptiFine".equals(loader)) {
+                          startMikaelOptiFineInstall(gameVersion);
+                      } else {
+                          showMikaelInstallError("Esse modloader não está disponível no motor integrado.", null);
+                      }
+                  }, 650);
+              }
+          
+              private void showMikaelInstallProgress(String message) {
+                  runOnUiThread(() -> {
+                      if (isFinishing()) return;
+                      dismissMikaelInstallProgressInternal();
+                      float density = getResources().getDisplayMetrics().density;
+                      int padding = (int) (22 * density);
+                      LinearLayout panel = new LinearLayout(this);
+                      panel.setOrientation(LinearLayout.VERTICAL);
+                      panel.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+                      panel.setPadding(padding, padding, padding, padding);
+                      panel.setBackgroundColor(0xFF101814);
+          
+                      TextView title = new TextView(this);
+                      title.setText("MIKAEL LAUNCHER PLUS");
+                      title.setTextColor(0xFF00D68F);
+                      title.setTextSize(16);
+                      title.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+                      title.setGravity(android.view.Gravity.CENTER);
+                      panel.addView(title, new LinearLayout.LayoutParams(-1, -2));
+          
+                      ProgressBar progress = new ProgressBar(this);
+                      if (android.os.Build.VERSION.SDK_INT >= 21) {
+                          progress.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(0xFF00D68F));
+                      }
+                      LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-2, -2);
+                      progressParams.topMargin = (int) (18 * density);
+                      progressParams.bottomMargin = (int) (14 * density);
+                      panel.addView(progress, progressParams);
+          
+                      TextView detail = new TextView(this);
+                      detail.setText(message);
+                      detail.setTextColor(0xFFF0F7F3);
+                      detail.setTextSize(14);
+                      detail.setGravity(android.view.Gravity.CENTER);
+                      panel.addView(detail, new LinearLayout.LayoutParams(-1, -2));
+          
+                      mikaelInstallProgressDialog = new AlertDialog.Builder(this)
+                              .setView(panel)
+                              .setCancelable(false)
+                              .create();
+                      mikaelInstallProgressDialog.show();
+                      if (mikaelInstallProgressDialog.getWindow() != null) {
+                          mikaelInstallProgressDialog.getWindow().setBackgroundDrawable(
+                                  new android.graphics.drawable.ColorDrawable(0xFF101814));
+                          mikaelInstallProgressDialog.getWindow().setDimAmount(0.65f);
+                      }
+                  });
+              }
+          
+              private void dismissMikaelInstallProgress() {
+                  if (Looper.myLooper() == Looper.getMainLooper()) {
+                      dismissMikaelInstallProgressInternal();
+                  } else {
+                      runOnUiThread(this::dismissMikaelInstallProgressInternal);
+                  }
+              }
+          
+              private void dismissMikaelInstallProgressInternal() {
+                  if (mikaelInstallProgressDialog != null) {
+                      if (mikaelInstallProgressDialog.isShowing()) mikaelInstallProgressDialog.dismiss();
+                      mikaelInstallProgressDialog = null;
+                  }
+              }
+          
+              private void showMikaelInstallError(String message, Exception cause) {
+                  runOnUiThread(() -> {
+                      dismissMikaelInstallProgressInternal();
+                      String detail = message;
+                      if (cause != null && cause.getMessage() != null && !cause.getMessage().trim().isEmpty()) {
+                          detail += "\n\nDetalhes: " + cause.getMessage();
+                      }
+                      if (isFinishing()) {
+                          Toast.makeText(getApplicationContext(), detail, Toast.LENGTH_LONG).show();
+                          return;
+                      }
+                      new AlertDialog.Builder(this)
+                              .setTitle("Mikael Launcher Plus")
+                              .setMessage(detail)
+                              .setPositiveButton("OK", (dialog, which) -> finish())
+                              .setCancelable(false)
+                              .show();
+                  });
+              }
+          
+              private void startMikaelFabriclikeInstall(String loader, String gameVersion) {
+                  showMikaelInstallProgress("Baixando os metadados e preparando " + loader
+                          + " para Minecraft " + gameVersion + "...");
+                  PojavApplication.sExecutorService.execute(() -> {
+                      try {
+                          FabriclikeUtils utils = "Quilt".equals(loader)
+                                  ? FabriclikeUtils.QUILT_UTILS : FabriclikeUtils.FABRIC_UTILS;
+                          FabricVersion[] available = utils.downloadLoaderVersions(gameVersion);
+                          if (available == null || available.length == 0) {
+                              showMikaelInstallError(loader + " não publicou uma versão compatível com Minecraft "
+                                      + gameVersion + ".", null);
+                              return;
+                          }
+                          FabricVersion selected = null;
+                          for (FabricVersion item : available) {
+                              if (item != null && item.stable) {
+                                  selected = item;
+                                  break;
+                              }
+                          }
+                          if (selected == null) {
+                              for (FabricVersion item : available) {
+                                  if (item != null && item.version != null && !item.version.trim().isEmpty()) {
+                                      selected = item;
+                                      break;
+                                  }
+                              }
+                          }
+                          if (selected == null) {
+                              showMikaelInstallError("Não foi encontrada uma versão instalável de " + loader + ".", null);
+                              return;
+                          }
+                          final String loaderVersion = selected.version;
+                          ModloaderDownloadListener listener = new ModloaderDownloadListener() {
+                              @Override
+                              public void onDownloadFinished(File downloadedFile) {
+                                  runOnUiThread(() -> finishMikaelProfileInstall(loader, gameVersion));
+                              }
+                              @Override
+                              public void onDataNotAvailable() {
+                                  showMikaelInstallError("Não foi possível baixar os arquivos de " + loader + ".", null);
+                              }
+                              @Override
+                              public void onDownloadError(Exception e) {
+                                  showMikaelInstallError("Falha ao instalar " + loader + ".", e);
+                              }
+                          };
+                          new FabriclikeDownloadTask(listener, utils, gameVersion, loaderVersion, true).run();
+                      } catch (Exception e) {
+                          showMikaelInstallError("Falha ao preparar " + loader + " para Minecraft " + gameVersion + ".", e);
+                      }
+                  });
+              }
+          
+              private void startMikaelForgeInstall(String gameVersion, boolean combineWithOptiFine) {
+                  showMikaelInstallProgress(combineWithOptiFine
+                          ? "Baixando Forge compatível. Depois o OptiFine será preparado para essa instalação..."
+                          : "Procurando e baixando a versão do Forge compatível com Minecraft " + gameVersion + "...");
+                  PojavApplication.sExecutorService.execute(() -> {
+                      try {
+                          List<String> available = ForgeUtils.downloadForgeVersions();
+                          String prefix = gameVersion + "-";
+                          String selected = null;
+                          if (available != null) {
+                              for (String candidate : available) {
+                                  if (candidate != null && candidate.startsWith(prefix)) selected = candidate;
+                              }
+                          }
+                          if (selected == null) {
+                              showMikaelInstallError("O Forge não tem um instalador compatível com Minecraft "
+                                      + gameVersion + ".", null);
+                              return;
+                          }
+                          new ForgeDownloadTask(
+                                  createMikaelNativeInstallerListener("Forge", gameVersion, combineWithOptiFine),
+                                  selected).run();
+                      } catch (Exception e) {
+                          showMikaelInstallError("Não foi possível obter as versões do Forge.", e);
+                      }
+                  });
+              }
+          
+              private void startMikaelNeoForgeInstall(String gameVersion) {
+                  showMikaelInstallProgress("Procurando e baixando o NeoForge compatível com Minecraft " + gameVersion + "...");
+                  PojavApplication.sExecutorService.execute(() -> {
+                      try {
+                          List<String> available = net.kdt.pojavlaunch.fragments.NeoForgeInstallFragment.downloadNeoForgeVersions();
+                          String[] parts = gameVersion.split("\\.");
+                          String family = null;
+                          if (parts.length >= 2 && "1".equals(parts[0])) {
+                              family = parts[1] + "." + (parts.length >= 3 ? parts[2] : "0") + ".";
+                          }
+                          String selected = null;
+                          if (available != null) {
+                              for (String candidate : available) {
+                                  if (candidate == null) continue;
+                                  if (candidate.startsWith(gameVersion + "-")
+                                          || (family != null && candidate.startsWith(family))) {
+                                      selected = candidate;
+                                  }
+                              }
+                          }
+                          if (selected == null) {
+                              showMikaelInstallError("O NeoForge não tem uma versão compatível com Minecraft "
+                                      + gameVersion + ".", null);
+                              return;
+                          }
+                          new NeoForgeDownloadTask(
+                                  createMikaelNativeInstallerListener("NeoForge", gameVersion, false),
+                                  selected).run();
+                      } catch (Exception e) {
+                          showMikaelInstallError("Não foi possível obter as versões do NeoForge.", e);
+                      }
+                  });
+              }
+          
+              private OptiFineUtils.OptiFineVersion findMikaelOptiFineVersion(String gameVersion) throws java.io.IOException {
+                  OptiFineUtils.OptiFineVersions all = OptiFineUtils.downloadOptiFineVersions();
+                  if (all == null || all.minecraftVersions == null || all.optifineVersions == null) return null;
+                  int count = Math.min(all.minecraftVersions.size(), all.optifineVersions.size());
+                  for (int i = 0; i < count; i++) {
+                      if (!gameVersion.equals(all.minecraftVersions.get(i))) continue;
+                      List<OptiFineUtils.OptiFineVersion> versions = all.optifineVersions.get(i);
+                      if (versions != null && !versions.isEmpty()) return versions.get(0);
+                  }
+                  return null;
+              }
+          
+              private void startMikaelOptiFineInstall(String gameVersion) {
+                  showMikaelInstallProgress("Procurando e baixando o OptiFine compatível com Minecraft " + gameVersion + "...");
+                  PojavApplication.sExecutorService.execute(() -> {
+                      try {
+                          OptiFineUtils.OptiFineVersion selected = findMikaelOptiFineVersion(gameVersion);
+                          if (selected == null) {
+                              showMikaelInstallError("O OptiFine não tem uma versão compatível com Minecraft "
+                                      + gameVersion + ".", null);
+                              return;
+                          }
+                          new OptiFineDownloadTask(selected,
+                                  createMikaelNativeInstallerListener("OptiFine", gameVersion, false), this).run();
+                      } catch (Exception e) {
+                          showMikaelInstallError("Não foi possível baixar o OptiFine.", e);
+                      }
+                  });
+              }
+          
+              private ModloaderDownloadListener createMikaelNativeInstallerListener(
+                      final String loader, final String gameVersion, final boolean combineWithOptiFine) {
+                  return new ModloaderDownloadListener() {
+                      @Override
+                      public void onDownloadFinished(File downloadedFile) {
+                          runOnUiThread(() -> {
+                              if (downloadedFile == null || !downloadedFile.isFile() || downloadedFile.length() <= 0) {
+                                  showMikaelInstallError("O instalador baixado para " + loader + " está vazio ou ausente.", null);
+                                  return;
+                              }
+                              boolean combined = "Forge".equals(loader) && combineWithOptiFine;
+                              getSharedPreferences("mikael_launcher_plus", MODE_PRIVATE).edit()
+                                      .putBoolean("pending_native_installer", !combined)
+                                      .putString("pending_native_loader", loader)
+                                      .putString("pending_game_version", gameVersion)
+                                      .putBoolean("pending_optifine_after_forge", combined)
+                                      .apply();
+                              dismissMikaelInstallProgressInternal();
+                              Intent installer = new Intent(LauncherActivity.this, JavaGUILauncherActivity.class);
+                              if ("Forge".equals(loader)) {
+                                  ForgeUtils.addAutoInstallArgs(installer, downloadedFile, true);
+                              } else if ("OptiFine".equals(loader)) {
+                                  OptiFineUtils.addAutoInstallArgs(installer, downloadedFile);
+                              } else if ("NeoForge".equals(loader)) {
+                                  installer.putExtra("javaArgs", "-jar \"" + downloadedFile.getAbsolutePath() + "\" --install-client")
+                                          .putExtra("openLogOutput", true);
+                              } else {
+                                  showMikaelInstallError("Não existe um instalador integrado para " + loader + ".", null);
+                                  return;
+                              }
+                              startActivity(installer);
+                          });
+                      }
+                      @Override
+                      public void onDataNotAvailable() {
+                          showMikaelInstallError("Não há um instalador compatível de " + loader
+                                  + " para Minecraft " + gameVersion + ".", null);
+                      }
+                      @Override
+                      public void onDownloadError(Exception e) {
+                          showMikaelInstallError("Falha ao baixar o instalador de " + loader + ".", e);
+                      }
+                  };
+              }
+          
+              private void finishMikaelProfileInstall(String loader, String gameVersion) {
+                  try {
+                      LauncherProfiles.load();
+                      String profileKey = findMikaelInstalledProfile(loader, gameVersion);
+                      if (profileKey == null) {
+                          showMikaelInstallError(loader + " foi baixado, mas o perfil instalado não foi encontrado.", null);
+                          return;
+                      }
+                      LauncherPreferences.DEFAULT_PREF.edit()
+                              .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, profileKey).apply();
+                      LauncherProfiles.write();
+                      dismissMikaelInstallProgress();
+                      new Handler(Looper.getMainLooper()).postDelayed(
+                              () -> ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true), 800);
+                  } catch (Exception e) {
+                      showMikaelInstallError("Não foi possível selecionar a instalação de " + loader + ".", e);
+                  }
+              }
+          
+              private void startMikaelOptiFineAfterForge(String gameVersion) {
+                  showMikaelInstallProgress("Forge instalado. Baixando o OptiFine compatível para adicionar à instância...");
+                  PojavApplication.sExecutorService.execute(() -> {
+                      try {
+                          OptiFineUtils.OptiFineVersion selected = findMikaelOptiFineVersion(gameVersion);
+                          if (selected == null) {
+                              showMikaelInstallError("Forge foi instalado, mas não existe OptiFine listado para Minecraft "
+                                      + gameVersion + ".", null);
+                              return;
+                          }
+                          ModloaderDownloadListener listener = new ModloaderDownloadListener() {
+                              @Override
+                              public void onDownloadFinished(File downloadedFile) {
+                                  runOnUiThread(() -> installMikaelOptiFineIntoForge(downloadedFile, gameVersion));
+                              }
+                              @Override
+                              public void onDataNotAvailable() {
+                                  showMikaelInstallError("Não foi possível obter um OptiFine compatível.", null);
+                              }
+                              @Override
+                              public void onDownloadError(Exception e) {
+                                  showMikaelInstallError("Falha ao baixar o OptiFine para Forge.", e);
+                              }
+                          };
+                          new OptiFineDownloadTask(selected, listener, this).run();
+                      } catch (Exception e) {
+                          showMikaelInstallError("Não foi possível preparar OptiFine para Forge.", e);
+                      }
+                  });
+              }
+          
+              private void installMikaelOptiFineIntoForge(File sourceJar, String gameVersion) {
+                  try {
+                      if (sourceJar == null || !sourceJar.isFile() || sourceJar.length() <= 0
+                              || sourceJar.length() > 64L * 1024L * 1024L) {
+                          throw new java.io.IOException("O arquivo do OptiFine está vazio ou excede 64 MiB.");
+                      }
+                      LauncherProfiles.load();
+                      String forgeKey = findMikaelInstalledProfile("Forge", gameVersion);
+                      if (forgeKey == null) throw new java.io.IOException("O perfil Forge não foi encontrado.");
+                      MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(forgeKey);
+                      if (profile == null) throw new java.io.IOException("Os dados do perfil Forge estão inválidos.");
+                      File gameDir = Tools.getGameDirPath(profile);
+                      if (gameDir == null) throw new java.io.IOException("A pasta de jogo do perfil Forge não está disponível.");
+                      File modsDir = new File(gameDir, "mods");
+                      if (!modsDir.isDirectory() && !modsDir.mkdirs()) {
+                          throw new java.io.IOException("Não foi possível criar a pasta mods do perfil Forge.");
+                      }
+                      String safeVersion = gameVersion.replaceAll("[^A-Za-z0-9._-]", "_");
+                      File target = new File(modsDir, "OptiFine-" + safeVersion + ".jar");
+                      File part = new File(modsDir, target.getName() + ".part");
+                      File backup = new File(modsDir, target.getName() + ".bak");
+                      if (part.exists() && !part.delete()) throw new java.io.IOException("Não foi possível limpar o temporário anterior.");
+                      long copied = 0L;
+                      try (FileInputStream input = new FileInputStream(sourceJar);
+                           FileOutputStream output = new FileOutputStream(part)) {
+                          byte[] buffer = new byte[8192];
+                          int count;
+                          while ((count = input.read(buffer)) != -1) {
+                              copied += count;
+                              if (copied > 64L * 1024L * 1024L) {
+                                  throw new java.io.IOException("O arquivo do OptiFine excedeu 64 MiB.");
+                              }
+                              output.write(buffer, 0, count);
+                          }
+                          output.flush();
+                          output.getFD().sync();
+                      }
+                      if (copied != sourceJar.length()) throw new java.io.IOException("A cópia do OptiFine ficou incompleta.");
+                      if (backup.exists() && !backup.delete()) throw new java.io.IOException("Não foi possível remover o backup antigo.");
+                      if (target.exists() && !target.renameTo(backup)) throw new java.io.IOException("Não foi possível guardar o arquivo antigo.");
+                      if (!part.renameTo(target)) {
+                          if (backup.exists()) backup.renameTo(target);
+                          throw new java.io.IOException("Não foi possível concluir a instalação do OptiFine.");
+                      }
+                      if (backup.exists()) backup.delete();
+                      LauncherPreferences.DEFAULT_PREF.edit()
+                              .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, forgeKey).apply();
+                      LauncherProfiles.write();
+                      dismissMikaelInstallProgress();
+                      new Handler(Looper.getMainLooper()).postDelayed(
+                              () -> ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true), 800);
+                  } catch (Exception e) {
+                      showMikaelInstallError("Não foi possível adicionar OptiFine à pasta mods do perfil Forge.", e);
+                  }
+              }
+          
+              private String findMikaelInstalledProfile(String loader, String gameVersion) {
+                  if (gameVersion == null || LauncherProfiles.mainProfileJson == null
+                          || LauncherProfiles.mainProfileJson.profiles == null) return null;
+                  String base = gameVersion.toLowerCase(java.util.Locale.ROOT);
+                  String neoForgeFamily = "";
+                  String[] parts = gameVersion.split("\\\\.");
+                  if (parts.length >= 2 && "1".equals(parts[0])) {
+                      neoForgeFamily = parts[1] + "." + (parts.length >= 3 ? parts[2] : "0") + ".";
+                  }
+                  for (String key : LauncherProfiles.mainProfileJson.profiles.keySet()) {
+                      MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(key);
+                      if (profile == null || profile.lastVersionId == null) continue;
+                      String id = profile.lastVersionId;
+                      String lower = id.toLowerCase(java.util.Locale.ROOT);
+                      boolean match = false;
+                      if ("Forge".equals(loader)) {
+                          match = lower.startsWith(base + "-forge-") || lower.startsWith("forge-" + base);
+                      } else if ("Fabric".equals(loader)) {
+                          match = lower.startsWith("fabric-loader-") && lower.endsWith("-" + base);
+                      } else if ("Quilt".equals(loader)) {
+                          match = lower.startsWith("quilt-loader-") && lower.endsWith("-" + base);
+                      } else if ("NeoForge".equals(loader)) {
+                          match = (lower.startsWith(base + "-neoforge-") || lower.startsWith("neoforge-" + base))
+                                  || (!neoForgeFamily.isEmpty() && lower.startsWith("neoforge-" + neoForgeFamily));
+                      } else if ("OptiFine".equals(loader)) {
+                          match = lower.startsWith(base) && (lower.contains("optifine") || lower.contains("hd_u"));
+                      }
+                      if (match) return key;
+                  }
+                  return null;
+              }
+          
+              private void maybeResumeMikaelPendingInstaller() {
+                  if (mikaelPendingInstallResumeScheduled || isFinishing()) return;
+                  android.content.SharedPreferences initial = getSharedPreferences("mikael_launcher_plus", MODE_PRIVATE);
+                  if (!initial.getBoolean("pending_native_installer", false)
+                          && !initial.getBoolean("pending_optifine_after_forge", false)) {
+                      mikaelPendingInstallAttempts = 0;
+                      return;
+                  }
+                  mikaelPendingInstallResumeScheduled = true;
+                  new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                      mikaelPendingInstallResumeScheduled = false;
+                      if (isFinishing()) return;
+                      android.content.SharedPreferences prefs = getSharedPreferences("mikael_launcher_plus", MODE_PRIVATE);
+                      boolean pendingForgeCombo = prefs.getBoolean("pending_optifine_after_forge", false);
+                      boolean pendingInstaller = prefs.getBoolean("pending_native_installer", false);
+                      if (!pendingForgeCombo && !pendingInstaller) return;
+                      String gameVersion = prefs.getString("pending_game_version", "");
+                      if (gameVersion == null || !gameVersion.matches("[A-Za-z0-9._-]{1,100}")) {
+                          prefs.edit().remove("pending_optifine_after_forge").remove("pending_native_installer")
+                                  .remove("pending_native_loader").remove("pending_game_version").apply();
+                          showMikaelInstallError("Não foi possível identificar a versão que acabou de ser instalada.", null);
+                          return;
+                      }
+                      try { LauncherProfiles.load(); } catch (Exception ignored) { }
+                      if (LauncherProfiles.mainProfileJson == null
+                              || LauncherProfiles.mainProfileJson.profiles == null
+                              || LauncherProfiles.mainProfileJson.profiles.isEmpty()) {
+                          retryOrStopMikaelPendingInstaller(prefs);
+                          return;
+                      }
+                      if (pendingForgeCombo) {
+                          String forgeProfile = findMikaelInstalledProfile("Forge", gameVersion);
+                          if (forgeProfile == null) {
+                              retryOrStopMikaelPendingInstaller(prefs);
+                              return;
+                          }
+                          prefs.edit().remove("pending_optifine_after_forge").remove("pending_native_installer")
+                                  .remove("pending_native_loader").remove("pending_game_version").apply();
+                          mikaelPendingInstallAttempts = 0;
+                          startMikaelOptiFineAfterForge(gameVersion);
+                          return;
+                      }
+                      String loader = prefs.getString("pending_native_loader", "");
+                      String profileKey = findMikaelInstalledProfile(loader, gameVersion);
+                      if (profileKey == null) {
+                          retryOrStopMikaelPendingInstaller(prefs);
+                          return;
+                      }
+                      LauncherPreferences.DEFAULT_PREF.edit()
+                              .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, profileKey).apply();
+                      LauncherProfiles.write();
+                      prefs.edit().remove("pending_native_installer").remove("pending_native_loader")
+                              .remove("pending_optifine_after_forge").remove("pending_game_version").apply();
+                      mikaelPendingInstallAttempts = 0;
+                      dismissMikaelInstallProgress();
+                      new Handler(Looper.getMainLooper()).postDelayed(
+                              () -> ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true), 800);
+                  }, 900);
+              }
+          
+              private void retryOrStopMikaelPendingInstaller(android.content.SharedPreferences prefs) {
+                  if (++mikaelPendingInstallAttempts < 20) {
+                      maybeResumeMikaelPendingInstaller();
+                      return;
+                  }
+                  prefs.edit().remove("pending_native_installer").remove("pending_native_loader")
+                          .remove("pending_optifine_after_forge").remove("pending_game_version").apply();
+                  mikaelPendingInstallAttempts = 0;
+                  showMikaelInstallError("O instalador terminou, mas não foi possível localizar o perfil criado. Confira o log de instalação.", null);
+              }
+          '''
+          source = source.replace(method_anchor, methods + '\n\n' + method_anchor, 1)
+          launcher_path.write_text(source)
+          PY
+
       - name: Validate integrated Java source without packaging APK
         if: github.event_name == 'push' || inputs.mode == 'validate'
         working-directory: upstream/Amethyst-Android
