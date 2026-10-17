@@ -232,22 +232,11 @@ public final class MainActivity extends Activity {
         detailParams.topMargin = dp(10);
         statusCard.addView(detail, detailParams);
 
-        Button play = primaryButton("ABRIR MOTOR PARA TESTE MANUAL", true);
-        LinearLayout.LayoutParams playParams = params(-1, dp(54));
+        Button play = primaryButton("JOGAR MINECRAFT", true);
+        LinearLayout.LayoutParams playParams = params(-1, dp(56));
         playParams.topMargin = dp(20);
         page.addView(play, playParams);
-        play.setOnClickListener(v -> {
-            String selectedVersion = getSelectedVersionForVanillaTest();
-            new AlertDialog.Builder(this)
-                    .setTitle("Etapa 2 — teste Vanilla")
-                    .setMessage("Versão escolhida nesta tela: " + selectedVersion + "\n\n"
-                            + "Esta tela ainda consulta os metadados da Mojang, mas não instala o jogo nem transfere a versão para o motor. "
-                            + "No motor, escolha a mesma versão Vanilla, conclua a autenticação compatível, aguarde os downloads e toque em Jogar. "
-                            + "Depois, entre em um mundo e confirme que ele carrega. Mods e loaders ficam fora deste teste.")
-                    .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
-                    .setPositiveButton("Abrir motor", (dialog, which) -> openEngineForVanillaTest())
-                    .show();
-        });
+        play.setOnClickListener(v -> openEngineForVanillaTest());
 
         LinearLayout versionsCard = new LinearLayout(this);
         versionsCard.setOrientation(LinearLayout.VERTICAL);
