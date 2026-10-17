@@ -102,10 +102,13 @@ jobs:
           test -f "$source_dir/InstanceModManager.java"
           test -f "$source_dir/VersionArtifactInstaller.java"
           test -f "$source_dir/MinecraftEngineBridge.java"
+          test -f "$source_dir/ModCompatibilityChecker.java"
+          test -f "$source_dir/DiagnosticLogManager.java"
           mkdir -p "$destination_dir"
           cp "$source_dir/MainActivity.java" "$source_dir/InstanceManager.java" \
              "$source_dir/InstanceModManager.java" "$source_dir/VersionArtifactInstaller.java" \
-             "$source_dir/MinecraftEngineBridge.java" "$destination_dir/"
+             "$source_dir/MinecraftEngineBridge.java" "$source_dir/ModCompatibilityChecker.java" \
+             "$source_dir/DiagnosticLogManager.java" "$destination_dir/"
           python3 - <<'PY'
           from pathlib import Path
           import re
