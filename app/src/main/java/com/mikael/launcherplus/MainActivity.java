@@ -660,6 +660,12 @@ public final class MainActivity extends Activity {
         accountNoteParams.topMargin = dp(6);
         settingsCard.addView(accountNote, accountNoteParams);
 
+        Button manageAccountsButton = primaryButton("CRIAR / ADICIONAR CONTA", true);
+        LinearLayout.LayoutParams manageAccountsParams = params(-1, dp(48));
+        manageAccountsParams.topMargin = dp(10);
+        settingsCard.addView(manageAccountsButton, manageAccountsParams);
+        manageAccountsButton.setOnClickListener(v -> showAccountManager());
+
         SharedPreferences preferences = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
         languageSpinner.setSelection(Math.max(0, Math.min(languages.length - 1, preferences.getInt("language_index", 0))));
         accountSpinner.setSelection(Math.max(0, Math.min(accountTypes.length - 1, preferences.getInt("account_type_index", 0))));
@@ -1887,4 +1893,123 @@ public final class MainActivity extends Activity {
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
+    private void showAccountManager() {
+        String[] actions = {
+                "Criar conta offline (nome de jogador)",
+                "Criar conta Microsoft",
+                "Criar conta ely.by",
+                "Ver contas salvas"
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Contas do Minecraft")
+                .setItems(actions, (dialog, which) -> {
+                    if (which == 0) showCreateOfflineAccountDialog();
+                    else if (which == 1) openAccountRegistration("https://signup.live.com/");
+                    else if (which == 2) openAccountRegistration("https://ely.by/register");
+                    else showSavedAccounts();
+                })
+                .setNegativeButton("Fechar", null)
+                .show();
+    }
+
+    private void showCreateOfflineAccountDialog() {
+        EditText usernameInput = new EditText(this);
+        usernameInput.setSingleLine(true);
+        usernameInput.setTextSize(16);
+        usernameInput.setTextColor(TEXT);
+        usernameInput.setHintTextColor(MUTED);
+        usernameInput.setHint("Nome: 3 a 16 letras, números ou _");
+        usernameInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        usernameInput.setPadding(dp(14), dp(8), dp(14), dp(8));
+        usernameInput.setBackground(roundRect(SURFACE, 12, BORDER, 1));
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(20), dp(8), dp(20), dp(4));
+        content.addView(text("Cria um perfil local para jogar em servidores que aceitam contas offline. "
+                + "Isso não cria uma conta Microsoft nem uma conta premium.", 13, MUTED, false));
+        LinearLayout.LayoutParams inputParams = params(-1, dp(52));
+        inputParams.topMargin = dp(12);
+        content.addView(usernameInput, inputParams);
+        new AlertDialog.Builder(this)
+                .setTitle("Nova conta offline")
+                .setView(content)
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Salvar conta", (dialog, which) -> {
+                    String username = usernameInput.getText().toString().trim();
+                    if (!username.matches("[A-Za-z0-9_]{3,16}")) {
+                        Toast.makeText(this, "Use 3–16 caracteres: letras, números ou _.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    SharedPreferences prefs = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
+                    try {
+                        JSONArray accounts = new JSONArray(prefs.getString("offline_accounts", "[]"));
+                        boolean exists = false;
+                        for (int i = 0; i < accounts.length(); i++) {
+                            if (username.equalsIgnoreCase(accounts.optString(i))) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) accounts.put(username);
+                        prefs.edit()
+                                .putString("offline_accounts", accounts.toString())
+                                .putString("offline_username", username)
+                                .putString("preferred_account_type", "Offline (nome de jogador)")
+                                .putInt("account_type_index", 0)
+                                .apply();
+                        Toast.makeText(this, "Perfil offline salvo: " + username, Toast.LENGTH_LONG).show();
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Não foi possível salvar o perfil offline.", Toast.LENGTH_LONG).show();
+                    }
+                })
+                .show();
+    }
+
+    private void showSavedAccounts() {
+        SharedPreferences prefs = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
+        JSONArray accounts;
+        try {
+            accounts = new JSONArray(prefs.getString("offline_accounts", "[]"));
+        } catch (Exception e) {
+            accounts = new JSONArray();
+        }
+        if (accounts.length() == 0) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Contas salvas")
+                    .setMessage("Você ainda não criou uma conta offline neste aparelho.")
+                    .setPositiveButton("Criar conta", (dialog, which) -> showCreateOfflineAccountDialog())
+                    .setNegativeButton("Fechar", null)
+                    .show();
+            return;
+        }
+        String[] names = new String[accounts.length()];
+        for (int i = 0; i < accounts.length(); i++) names[i] = accounts.optString(i);
+        new AlertDialog.Builder(this)
+                .setTitle("Escolher conta offline")
+                .setItems(names, (dialog, which) -> {
+                    String username = names[which];
+                    prefs.edit()
+                            .putString("offline_username", username)
+                            .putString("preferred_account_type", "Offline (nome de jogador)")
+                            .putInt("account_type_index", 0)
+                            .apply();
+                    Toast.makeText(this, "Conta selecionada: " + username, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Fechar", null)
+                .show();
+    }
+
+    private void openAccountRegistration(String url) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            startActivity(intent);
+            Toast.makeText(this,
+                    "Depois de criar a conta, o login dentro do launcher ainda precisa ser integrado.",
+                    Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Não foi possível abrir a página de cadastro.", Toast.LENGTH_LONG).show();
+        }
+    }
+
 }
