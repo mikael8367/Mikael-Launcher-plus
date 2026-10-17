@@ -153,7 +153,7 @@ public final class InstanceReadinessChecker {
         long expectedLogicalCopies = logicalPathCount * mappedCopies;
         if ("assets_staged".equals(assetStatus) && profile.optBoolean("assetsInstalled", false)
                 && assetIndexId.matches("[A-Za-z0-9._-]{1,100}")
-                && !". ".equals(assetIndexId) && !"..".equals(assetIndexId)
+                && !".".equals(assetIndexId) && !"..".equals(assetIndexId)
                 && assetIndexSha1.matches("[0-9a-f]{40}")
                 && assetObjectCount > 0 && assetsVerified == assetObjectCount
                 && logicalPathsVerified == expectedLogicalCopies) {
