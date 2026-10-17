@@ -1,7 +1,13 @@
 name: Minecraft engine base (Amethyst)
 
 on:
-  # Manual only. The default validates integration source without packaging an APK.
+  # Source changes validate the real engine integration; this never packages an APK.
+  push:
+    branches: [main]
+    paths:
+      - 'app/src/main/java/com/mikael/launcherplus/**'
+      - '.github/workflows/minecraft-engine-base.yml'
+  # Manual validation is the default. APK packaging requires explicitly selecting "build".
   workflow_dispatch:
     inputs:
       mode:
@@ -281,7 +287,7 @@ jobs:
           PY
 
       - name: Validate integrated Java source without packaging APK
-        if: inputs.mode == 'validate'
+        if: github.event_name == 'push' || inputs.mode == 'validate'
         working-directory: upstream/Amethyst-Android
         run: ./gradlew --no-daemon --stacktrace :app_pojavlauncher:compileDebugJavaWithJavac
 
