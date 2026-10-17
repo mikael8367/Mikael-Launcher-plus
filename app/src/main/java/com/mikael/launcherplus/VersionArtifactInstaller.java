@@ -1,5 +1,6 @@
 package com.mikael.launcherplus;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -21,6 +22,8 @@ import java.util.Locale;
  */
 public final class VersionArtifactInstaller {
     private static final int MAX_METADATA_BYTES = 8 * 1024 * 1024;
+    private static final String OFFICIAL_VERSION_MANIFEST =
+            "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     private static final long MAX_CLIENT_BYTES = 1024L * 1024L * 1024L;
     private static final int CONNECT_TIMEOUT_MS = 15000;
     private static final int READ_TIMEOUT_MS = 20000;
@@ -56,6 +59,7 @@ public final class VersionArtifactInstaller {
         boolean finished = false;
         try {
             byte[] metadataBytes = downloadBytes(metadataUrl, MAX_METADATA_BYTES);
+            verifyMetadataAgainstOfficialManifest(id, metadataUrl, metadataBytes);
             JSONObject metadata = new JSONObject(new String(metadataBytes, java.nio.charset.StandardCharsets.UTF_8));
             if (!id.equals(metadata.optString("id", ""))) {
                 throw new IOException("O identificador do JSON oficial não corresponde à versão selecionada.");
@@ -102,6 +106,47 @@ public final class VersionArtifactInstaller {
                 deleteTemp(metadataTemp);
                 deleteTemp(clientTemp);
             }
+        }
+    }
+
+    /**
+     * Anchors the version JSON to Mojang's separately published version manifest.
+     * A SHA-1 found only inside the downloaded version JSON is not a trust anchor,
+     * because an altered JSON could replace both the URL and the expected client hash.
+     */
+    private void verifyMetadataAgainstOfficialManifest(String versionId, String suppliedUrl,
+                                                        byte[] metadataBytes) throws IOException {
+        final JSONObject manifest;
+        try {
+            byte[] manifestBytes = downloadBytes(OFFICIAL_VERSION_MANIFEST, MAX_METADATA_BYTES);
+            manifest = new JSONObject(new String(manifestBytes, java.nio.charset.StandardCharsets.UTF_8));
+        } catch (org.json.JSONException e) {
+            throw new IOException("O manifesto oficial de versões da Mojang é inválido.", e);
+        }
+
+        JSONArray versions = manifest.optJSONArray("versions");
+        if (versions == null) throw new IOException("O manifesto oficial não contém a lista de versões.");
+        String expectedUrl = null;
+        String expectedSha1 = null;
+        for (int i = 0; i < versions.length(); i++) {
+            JSONObject entry = versions.optJSONObject(i);
+            if (entry == null || !versionId.equals(entry.optString("id", ""))) continue;
+            expectedUrl = entry.optString("url", "");
+            expectedSha1 = entry.optString("sha1", "").toLowerCase(Locale.ROOT);
+            break;
+        }
+        if (expectedUrl == null || expectedUrl.isEmpty()) {
+            throw new IOException("A versão selecionada não consta no manifesto oficial da Mojang.");
+        }
+        if (!expectedUrl.equals(suppliedUrl)) {
+            throw new IOException("A URL dos metadados não corresponde à URL publicada no manifesto oficial.");
+        }
+        if (expectedSha1 == null || !expectedSha1.matches("[0-9a-f]{40}")) {
+            throw new IOException("O manifesto oficial não publicou um SHA-1 válido para os metadados.");
+        }
+        String actualSha1 = sha1(metadataBytes);
+        if (!expectedSha1.equals(actualSha1)) {
+            throw new IOException("Os metadados da versão não correspondem ao SHA-1 do manifesto oficial.");
         }
     }
 
