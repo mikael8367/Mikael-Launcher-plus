@@ -1,10 +1,8 @@
 name: Minecraft engine base (Amethyst)
 
 on:
+  # Deliberately manual: this workflow produces an APK and must only run when Mikael requests it.
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/minecraft-engine-base.yml"
 
 permissions:
   contents: read
