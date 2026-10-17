@@ -223,6 +223,35 @@ jobs:
               raise SystemExit("Expected exactly one LauncherActivity onCreate setup")
           text = text.replace(on_create, on_create_replacement, 1)
 
+          # Replace the Amethyst home fragment with an empty engine host for Mikael UI requests.
+          menu_lines = [
+              "        if(fragmentManager.getBackStackEntryCount() < 1) {",
+              "            // Manually add the first fragment to the backstack to get easily back to it",
+              "            // There must be a better way to handle the root though...",
+              "            // (artDev: No, there is not. I've spent days researching this for another unrelated project.)",
+              "            fragmentManager.beginTransaction()",
+              "                    .setReorderingAllowed(true)",
+              "                    .addToBackStack(\\"ROOT\\")",
+              "                    .add(R.id.container_fragment, MainMenuFragment.class, null, \\"ROOT\\").commit();",
+              "        }",
+          ]
+          menu_block = "\\n".join(menu_lines)
+          engine_lines = [
+              "        if (fragmentManager.getBackStackEntryCount() < 1) {",
+              "            fragmentManager.beginTransaction()",
+              "                    .setReorderingAllowed(true)",
+              "                    .addToBackStack(\\"ROOT\\")",
+              "                    .add(R.id.container_fragment,",
+              "                            (mikaelRequestedVersion != null || mikaelRequestedLoader != null)",
+              "                                    ? Fragment.class : MainMenuFragment.class,",
+              "                            null, \\"ROOT\\").commit();",
+              "        }",
+          ]
+          engine_block = "\\n".join(engine_lines)
+          if text.count(menu_block) != 1:
+              raise SystemExit("Expected exactly one native launcher main-menu fragment block")
+          text = text.replace(menu_block, engine_block, 1)
+
           resume = (
               "    protected void onResume() {\n"
               "        super.onResume();\n"
