@@ -6,13 +6,16 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 
 /**
- * Safe handoff to an installed Android Minecraft Java engine.
+ * Handoff to the real Amethyst/Pojav Minecraft Java engine.
  *
- * This does not embed the engine in this APK. It opens the companion engine's
- * own launcher, where account, version downloads, loader installation and launch
- * are handled by that engine.
+ * The integrated engine build forwards the requested version through its storage
+ * bootstrap and asks the native launcher to start that version. A standalone UI-only
+ * build cannot run Minecraft by itself; it needs this engine integrated or installed.
  */
 public final class MinecraftEngineBridge {
+    public static final String EXTRA_REQUESTED_VERSION =
+            "com.mikael.launcherplus.extra.REQUESTED_VERSION";
+
     private static final String[] ENGINE_PACKAGES = {
             "org.angelauramc.amethyst.debug",
             "org.angelauramc.amethyst"
@@ -20,15 +23,18 @@ public final class MinecraftEngineBridge {
 
     private MinecraftEngineBridge() { }
 
-    public static boolean openInstalledEngine(Activity activity) {
+    public static boolean openInstalledEngine(Activity activity, String requestedVersion) {
+        if (activity == null || !isValidVersion(requestedVersion)) return false;
+
         String ownPackage = activity.getPackageName();
         if ("org.angelauramc.amethyst.debug".equals(ownPackage)
                 || "org.angelauramc.amethyst".equals(ownPackage)) {
-            // In the integrated engine APK, use its own storage/component bootstrap.
-            Intent internalIntent = new Intent();
-            internalIntent.setClassName(ownPackage, "net.kdt.pojavlaunch.TestStorageActivity");
+            // The integrated APK must run the storage/bootstrap activity first.
+            Intent bootstrap = new Intent();
+            bootstrap.setClassName(ownPackage, "net.kdt.pojavlaunch.TestStorageActivity");
+            bootstrap.putExtra(EXTRA_REQUESTED_VERSION, requestedVersion);
             try {
-                activity.startActivity(internalIntent);
+                activity.startActivity(bootstrap);
                 return true;
             } catch (ActivityNotFoundException | SecurityException ignored) {
                 return false;
@@ -40,6 +46,7 @@ public final class MinecraftEngineBridge {
             try {
                 Intent launchIntent = packageManager.getLaunchIntentForPackage(packageName);
                 if (launchIntent == null) continue;
+                launchIntent.putExtra(EXTRA_REQUESTED_VERSION, requestedVersion);
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 activity.startActivity(launchIntent);
                 return true;
@@ -48,5 +55,10 @@ public final class MinecraftEngineBridge {
             }
         }
         return false;
+    }
+
+    private static boolean isValidVersion(String value) {
+        return value != null && value.matches("[A-Za-z0-9._-]{1,100}")
+                && !".".equals(value) && !"..".equals(value);
     }
 }
