@@ -164,6 +164,27 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
+          manifest_path = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/AndroidManifest.xml")
+          manifest = manifest_path.read_text()
+          manifest, icon_count = re.subn(r'android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/mikael_launcher_plus_icon"', manifest, count=1)
+          manifest, round_icon_count = re.subn(r'android:roundIcon="@mipmap/ic_launcher_round"', 'android:roundIcon="@drawable/mikael_launcher_plus_icon"', manifest, count=1)
+          if icon_count != 1 or round_icon_count != 1:
+              raise SystemExit("Could not replace the visible launcher icon references")
+          manifest_path.write_text(manifest)
+
+          icon_path = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/res/drawable/mikael_launcher_plus_icon.xml")
+          icon_path.parent.mkdir(parents=True, exist_ok=True)
+          icon_path.write_text("""<?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <path android:fillColor="#080D0B" android:pathData="M0,0h108v108h-108z" />
+              <path android:fillColor="#00D68F" android:pathData="M18,78 L18,30 L31,30 L54,56 L77,30 L90,30 L90,78 L76,78 L76,49 L54,73 L32,49 L32,78 Z" />
+              <path android:fillColor="#F0F7F3" android:pathData="M54,35 L64,45 L54,55 L44,45 Z" />
+          </vector>
+          """)
           strings_path = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/res/values/strings.xml")
           value = strings_path.read_text()
           for name, text_value in [
@@ -391,7 +412,7 @@ jobs:
           if source.count(field_anchor) != 1:
               raise SystemExit("Expected exactly one engine account-spinner field")
           if "private AlertDialog mikaelInstallProgressDialog;" not in source:
-              source = source.replace(field_anchor, "    private AlertDialog mikaelInstallProgressDialog;\\n" + field_anchor, 1)
+              source = source.replace(field_anchor, "    private AlertDialog mikaelInstallProgressDialog;\n" + field_anchor, 1)
           
           guard_old = "    private void maybeLaunchMikaelRequestedVersion() {\n        if (mikaelRequestedVersion == null || mikaelLaunchScheduled) return;"
           guard_new = "    private void maybeLaunchMikaelRequestedVersion() {\n        if (mikaelRequestedLoader != null && !\"Vanilla\".equals(mikaelRequestedLoader)) return;\n        if (mikaelRequestedVersion == null || mikaelLaunchScheduled) return;"
