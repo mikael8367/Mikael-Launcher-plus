@@ -89,6 +89,8 @@ public final class MinecraftEngineBridge {
         return "Vanilla".equals(value)
                 || "Forge".equals(value)
                 || "Fabric".equals(value)
+                || "Quilt".equals(value)
+                || "NeoForge".equals(value)
                 || "OptiFine".equals(value)
                 || "Forge + OptiFine".equals(value);
     }
