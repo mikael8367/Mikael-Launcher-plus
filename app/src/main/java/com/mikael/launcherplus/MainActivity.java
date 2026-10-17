@@ -712,8 +712,8 @@ public final class MainActivity extends Activity {
         updatingVersionControls = false;
         if (versionsOutput != null && !allVersionIds.isEmpty()) {
             versionsOutput.setText("Versões no manifesto: " + allVersionIds.size()
-                    + "\\nResultados deste filtro: " + ids.size()
-                    + "\\nÚltima release estável: " + getSharedPreferences("launcher_preferences", MODE_PRIVATE)
+                    + "\nResultados deste filtro: " + ids.size()
+                    + "\nÚltima release estável: " + getSharedPreferences("launcher_preferences", MODE_PRIVATE)
                     .getString("latest_release", "consulte o manifesto"));
         }
     }
@@ -767,16 +767,16 @@ public final class MainActivity extends Activity {
                 JSONObject client = downloads == null ? null : downloads.optJSONObject("client");
                 JSONObject javaVersion = version.optJSONObject("javaVersion");
                 result = "Versão: " + version.optString("id", selected)
-                        + "\\nTipo: " + version.optString("type", selectedType)
-                        + "\\nData: " + version.optString("releaseTime", "não informada")
-                        + "\\nJava requerida: " + (javaVersion == null ? "não informada" : javaVersion.optString("majorVersion", "não informada"))
-                        + "\\nArquivo client: " + (client == null ? "não disponível" : client.optString("url", "não disponível"))
-                        + "\\nSHA-1: " + (client == null ? "não disponível" : client.optString("sha1", "não disponível"))
-                        + "\\nTamanho do client: " + (client == null ? "não informado" : client.optString("size", "não informado"))
-                        + "\\n\\nMetadados consultados; download e inicialização do jogo ainda não estão implementados.";
+                        + "\nTipo: " + version.optString("type", selectedType)
+                        + "\nData: " + version.optString("releaseTime", "não informada")
+                        + "\nJava requerida: " + (javaVersion == null ? "não informada" : javaVersion.optString("majorVersion", "não informada"))
+                        + "\nArquivo client: " + (client == null ? "não disponível" : client.optString("url", "não disponível"))
+                        + "\nSHA-1: " + (client == null ? "não disponível" : client.optString("sha1", "não disponível"))
+                        + "\nTamanho do client: " + (client == null ? "não informado" : client.optString("size", "não informado"))
+                        + "\n\nMetadados consultados; download e inicialização do jogo ainda não estão implementados.";
             } catch (Exception exception) {
                 String message = exception.getMessage();
-                result = "Não foi possível obter os metadados da versão.\\n"
+                result = "Não foi possível obter os metadados da versão.\n"
                         + (message == null ? exception.getClass().getSimpleName() : message);
             } finally { if (connection != null) connection.disconnect(); }
             final String displayResult = result;
@@ -812,11 +812,11 @@ public final class MainActivity extends Activity {
         long totalMb = info.totalMem / (1024L * 1024L);
         String device = Build.MANUFACTURER + " " + Build.MODEL;
         deviceOutput.setText("Dispositivo: " + device
-                + "\\nAndroid: " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")"
-                + "\\nMemória RAM total reportada: " + totalMb + " MB"
-                + "\\nRAM disponível neste momento: " + availableMb + " MB"
-                + "\\nHeap máxima do app: " + (Runtime.getRuntime().maxMemory() / (1024L * 1024L)) + " MB"
-                + "\\nDiagnóstico informativo; não altera nem reserva RAM para o Minecraft.");
+                + "\nAndroid: " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")"
+                + "\nMemória RAM total reportada: " + totalMb + " MB"
+                + "\nRAM disponível neste momento: " + availableMb + " MB"
+                + "\nHeap máxima do app: " + (Runtime.getRuntime().maxMemory() / (1024L * 1024L)) + " MB"
+                + "\nDiagnóstico informativo; não altera nem reserva RAM para o Minecraft.");
     }
 
     private void copySafeDiagnosticReport() {
@@ -1285,7 +1285,7 @@ public final class MainActivity extends Activity {
             Object selected = instanceSpinner.getSelectedItem();
             if (selected == null) {
                 instancesOutput.setText("Instâncias locais: " + records.length()
-                        + "\\nCrie um perfil depois de consultar e selecionar uma versão oficial.");
+                        + "\nCrie um perfil depois de consultar e selecionar uma versão oficial.");
                 return;
             }
             String name = String.valueOf(selected);
@@ -1302,13 +1302,13 @@ public final class MainActivity extends Activity {
                 return;
             }
             instancesOutput.setText("Instâncias locais: " + records.length()
-                    + "\\nNome: " + selectedRecord.optString("name", "—")
-                    + "\\nVersão escolhida: " + selectedRecord.optString("version", "—")
-                    + "\\nPerfil de carregador: " + selectedRecord.optString("loader", "Vanilla")
-                    + "\\nPasta privada: " + selectedRecord.optString("relativePath", "instances")
-                    + "\\nEstado: " + selectedRecord.optString("installStatus", "perfil criado; instalação não iniciada")
-                    + "\\nVersão baixada: " + selectedRecord.optString("stagedVersion", "nenhuma")
-                    + "\\nJogo jogável: não; arquivos de cliente, bibliotecas/assets/runtime e ligação ao motor ainda incompletos.");
+                    + "\nNome: " + selectedRecord.optString("name", "—")
+                    + "\nVersão escolhida: " + selectedRecord.optString("version", "—")
+                    + "\nPerfil de carregador: " + selectedRecord.optString("loader", "Vanilla")
+                    + "\nPasta privada: " + selectedRecord.optString("relativePath", "instances")
+                    + "\nEstado: " + selectedRecord.optString("installStatus", "perfil criado; instalação não iniciada")
+                    + "\nVersão baixada: " + selectedRecord.optString("stagedVersion", "nenhuma")
+                    + "\nJogo jogável: não; arquivos de cliente, bibliotecas/assets/runtime e ligação ao motor ainda incompletos.");
         } catch (Exception exception) {
             instancesOutput.setText("Erro ao ler os detalhes: " + safeExceptionMessage(exception));
         }
@@ -1355,8 +1355,8 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this)
                 .setTitle("Importar arquivo JAR?")
                 .setMessage("Arquivo: " + selectedFileName
-                        + "\\nDestino: " + instanceName + "/mods"
-                        + "\\n\\nUm JAR pode executar código no computador/dispositivo em que é usado. Continue apenas se confiar na origem.")
+                        + "\nDestino: " + instanceName + "/mods"
+                        + "\n\nUm JAR pode executar código no computador/dispositivo em que é usado. Continue apenas se confiar na origem.")
                 .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
                 .setPositiveButton("Importar", (dialog, which) -> importModFile(uri, instanceName, selectedFileName))
                 .show();
@@ -1406,13 +1406,13 @@ public final class MainActivity extends Activity {
             for (int i = 0; i < shown; i++) {
                 JSONObject mod = mods.getJSONObject(i);
                 long mbHundredths = (mod.optLong("sizeBytes", 0) * 100L) / (1024L * 1024L);
-                summary.append("\\n• ").append(mod.optString("name", "arquivo.jar"))
+                summary.append("\n• ").append(mod.optString("name", "arquivo.jar"))
                         .append(" — ").append(mbHundredths / 100).append('.')
                         .append(String.format(java.util.Locale.ROOT, "%02d", mbHundredths % 100))
                         .append(" MB");
             }
-            if (mods.length() > shown) summary.append("\\n… e mais ").append(mods.length() - shown).append(" arquivo(s).");
-            if (mods.length() == 0) summary.append("\\nNenhum JAR importado ainda.");
+            if (mods.length() > shown) summary.append("\n… e mais ").append(mods.length() - shown).append(" arquivo(s).");
+            if (mods.length() == 0) summary.append("\nNenhum JAR importado ainda.");
             modsOutput.setText(summary.toString());
         } catch (Exception exception) {
             modsOutput.setText("Não foi possível listar os mods: " + safeExceptionMessage(exception));
@@ -1432,28 +1432,28 @@ public final class MainActivity extends Activity {
                 JSONObject report = modCompatibilityChecker.inspect(instanceName);
                 StringBuilder summary = new StringBuilder();
                 summary.append("ANÁLISE DE MODS — ").append(instanceName)
-                        .append("\\nMinecraft: ").append(report.optString("minecraftVersion", "desconhecido"))
+                        .append("\nMinecraft: ").append(report.optString("minecraftVersion", "desconhecido"))
                         .append(" | Loader: ").append(report.optString("loader", "Vanilla"))
-                        .append("\\nJARs: ").append(report.optInt("jarCount", 0))
+                        .append("\nJARs: ").append(report.optInt("jarCount", 0))
                         .append(" | Metadados reconhecidos: ").append(report.optInt("metadataRecognized", 0))
                         .append(" | Sem metadados reconhecidos: ").append(report.optInt("metadataMissing", 0))
-                        .append("\\n");
+                        .append("\n");
                 org.json.JSONArray warnings = report.optJSONArray("warnings");
                 if (warnings == null || warnings.length() == 0) {
-                    summary.append("\\nNenhuma dependência ausente ou ID duplicado foi detectado pelos metadados disponíveis.");
+                    summary.append("\nNenhuma dependência ausente ou ID duplicado foi detectado pelos metadados disponíveis.");
                 } else {
-                    summary.append("\\nAVISOS (").append(warnings.length()).append("):");
+                    summary.append("\nAVISOS (").append(warnings.length()).append("):");
                     for (int i = 0; i < warnings.length(); i++) {
-                        summary.append("\\n• ").append(warnings.optString(i));
+                        summary.append("\n• ").append(warnings.optString(i));
                     }
                 }
                 org.json.JSONArray findings = report.optJSONArray("findings");
                 if (findings != null) {
-                    summary.append("\\n\\nARQUIVOS:");
+                    summary.append("\n\nARQUIVOS:");
                     for (int i = 0; i < findings.length(); i++) {
                         JSONObject item = findings.optJSONObject(i);
                         if (item == null) continue;
-                        summary.append("\\n• ").append(item.optString("file", "arquivo.jar"))
+                        summary.append("\n• ").append(item.optString("file", "arquivo.jar"))
                                 .append(": ").append(item.optString("status", "desconhecido"));
                         if (item.has("modId")) {
                             summary.append(" — ").append(item.optString("modId"))
@@ -1463,7 +1463,7 @@ public final class MainActivity extends Activity {
                         if (!message.isEmpty()) summary.append(" (").append(message).append(")");
                     }
                 }
-                summary.append("\\n\\nImportante: é uma verificação estática parcial. Não instala Forge/Fabric/OptiFine, não verifica todas as faixas de versão e não prova que o jogo iniciará.");
+                summary.append("\n\nImportante: é uma verificação estática parcial. Não instala Forge/Fabric/OptiFine, não verifica todas as faixas de versão e não prova que o jogo iniciará.");
                 reportValue = summary.toString();
             } catch (Exception exception) {
                 reportValue = "Falha na análise: " + safeExceptionMessage(exception);
