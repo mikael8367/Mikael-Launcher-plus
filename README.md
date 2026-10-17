@@ -44,7 +44,13 @@ O dashboard inclui cópia de um relatório de diagnóstico do dispositivo e visu
 
 O botão **Verificar integridade da instância** confere os metadados do perfil, se a versão preparada corresponde à escolhida, o JSON oficial, o SHA-1 e tamanho esperado do JAR e o hash real do arquivo local. O resultado lista os bloqueios restantes para a instalação.
 
-A verificação **não inicia o jogo nem marca a instância como jogável**. Bibliotecas, assets, runtime Java compatível e ligação da instância ao diretório real usado pelo motor continuam pendentes. A compilação e o teste no dispositivo ainda precisam ser confirmados. Consulte [a documentação da etapa 6](docs/INSTANCE-READINESS.md).
+A verificação **não inicia o jogo nem marca a instância como jogável**. Bibliotecas, runtime Java compatível e ligação da instância ao diretório real usado pelo motor continuam pendentes. A compilação do app isolado passou antes das alterações da etapa 7; teste físico e validação integrada continuam pendentes. Consulte [a documentação da etapa 6](docs/INSTANCE-READINESS.md).
+
+## Etapa 7 — baixar e verificar assets Vanilla
+
+O botão **Baixar e verificar assets** lê o índice oficial da versão Vanilla, verifica SHA-1 e tamanho do índice e dos objetos, evita baixar novamente arquivos já íntegros e prepara caminhos legados quando o índice solicita. Há progresso e cancelamento; arquivos completos verificados ficam disponíveis para continuar em outra tentativa, enquanto arquivos .part incompletos são descartados.
+
+O diagnóstico de instância passa a consultar o registro dos assets e recalcular o SHA-1 do índice. Ele não recalcula cada asset na checagem rápida, e o resultado **não significa que o Minecraft já pode iniciar**: ainda faltam bibliotecas, runtime Java e integração à pasta real de jogo do motor. Consulte [a documentação da etapa 7](docs/VANILLA-ASSETS.md).
 
 ## Workflows
 
