@@ -1,6 +1,11 @@
 package com.mikael.launcherplus;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.os.Build;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -9,12 +14,16 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.ArrayAdapter;
 import android.content.SharedPreferences;
 import android.widget.TextView;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -45,9 +54,19 @@ public final class MainActivity extends Activity {
     private TextView versionsOutput;
     private Button versionsButton;
     private Button metadataButton;
+    private Button copyMetadataButton;
     private Spinner versionSpinner;
-    private final List<String> releaseIds = new ArrayList<>();
-    private final List<String> releaseUrls = new ArrayList<>();
+    private Spinner typeSpinner;
+    private EditText versionSearch;
+    private TextView deviceOutput;
+    private String lastMetadataText = "";
+    private final List<String> allVersionIds = new ArrayList<>();
+    private final List<String> allVersionUrls = new ArrayList<>();
+    private final List<String> allVersionTypes = new ArrayList<>();
+    private final List<String> visibleVersionIds = new ArrayList<>();
+    private final List<String> visibleVersionUrls = new ArrayList<>();
+    private final List<String> visibleVersionTypes = new ArrayList<>();
+    private boolean updatingVersionControls = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -151,6 +170,45 @@ public final class MainActivity extends Activity {
         versionsCard.addView(metadataButton, metadataParams);
         metadataButton.setOnClickListener(v -> loadSelectedVersionMetadata());
 
+        typeSpinner = new Spinner(this);
+        ArrayAdapter<String> typeAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item,
+                new String[]{"Todas as versões", "Releases estáveis", "Snapshots", "Betas antigas", "Alphas antigas"});
+        typeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        typeSpinner.setAdapter(typeAdapter);
+        LinearLayout.LayoutParams typeParams = params(-1, dp(48));
+        typeParams.topMargin = dp(10);
+        versionsCard.addView(typeSpinner, typeParams);
+
+        versionSearch = new EditText(this);
+        versionSearch.setSingleLine(true);
+        versionSearch.setTextSize(15);
+        versionSearch.setTextColor(TEXT);
+        versionSearch.setHintTextColor(MUTED);
+        versionSearch.setHint("Pesquisar versão (ex.: 1.12.2)");
+        versionSearch.setPadding(dp(12), 0, dp(12), 0);
+        versionSearch.setBackground(roundRect(BACKGROUND, 12, 0xFF355344, 1));
+        LinearLayout.LayoutParams searchParams = params(-1, dp(48));
+        searchParams.topMargin = dp(8);
+        versionsCard.addView(versionSearch, searchParams);
+        versionSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { filterVersions(); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        typeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (!updatingVersionControls) filterVersions();
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+        });
+
+        copyMetadataButton = button("COPIAR METADADOS", true);
+        LinearLayout.LayoutParams copyParams = params(-1, dp(48));
+        copyParams.topMargin = dp(8);
+        versionsCard.addView(copyMetadataButton, copyParams);
+        copyMetadataButton.setOnClickListener(v -> copyLastMetadata());
+
         TextView sections = text("MÓDULOS DO PROJETO", 12, EMERALD, true);
         LinearLayout.LayoutParams sectionParams = params(-1, -2);
         sectionParams.topMargin = dp(28);
@@ -163,7 +221,26 @@ public final class MainActivity extends Activity {
         addModule(page, "Contas e sessões",
                 "Planejado · autenticação oficial e armazenamento seguro");
         addModule(page, "Desempenho e diagnóstico",
-                "Planejado · logs, códigos de saída e métricas reais");
+                "Informações reais do dispositivo e memória disponíveis abaixo.");
+
+        LinearLayout deviceCard = new LinearLayout(this);
+        deviceCard.setOrientation(LinearLayout.VERTICAL);
+        deviceCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        deviceCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        LinearLayout.LayoutParams deviceCardParams = params(-1, -2);
+        deviceCardParams.topMargin = dp(12);
+        page.addView(deviceCard, deviceCardParams);
+        deviceCard.addView(text("DIAGNÓSTICO DO DISPOSITIVO", 12, EMERALD, true));
+        deviceOutput = text("Carregando informações do Android...", 14, MUTED, false);
+        LinearLayout.LayoutParams deviceOutputParams = params(-1, -2);
+        deviceOutputParams.topMargin = dp(10);
+        deviceCard.addView(deviceOutput, deviceOutputParams);
+        Button refreshDevice = button("ATUALIZAR DIAGNÓSTICO", true);
+        LinearLayout.LayoutParams refreshParams = params(-1, dp(48));
+        refreshParams.topMargin = dp(10);
+        deviceCard.addView(refreshDevice, refreshParams);
+        refreshDevice.setOnClickListener(v -> refreshDeviceDiagnostics());
+        refreshDeviceDiagnostics();
 
         TextView footer = text("Mikael Launcher Plus · versão 0.1.0 · base inicial",
                 12, MUTED, false);
@@ -213,6 +290,7 @@ public final class MainActivity extends Activity {
                 JSONObject manifest = new JSONObject(body);
                 JSONObject latest = manifest.getJSONObject("latest");
                 String latestRelease = latest.getString("release");
+                getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit().putString("latest_release", latestRelease).apply();
                 JSONArray versions = manifest.getJSONArray("versions");
                 StringBuilder display = new StringBuilder();
                 display.append("Última release estável: ").append(latestRelease).append('\n');
@@ -221,17 +299,17 @@ public final class MainActivity extends Activity {
 
                 List<String> foundIds = new ArrayList<>();
                 List<String> foundUrls = new ArrayList<>();
+                List<String> foundTypes = new ArrayList<>();
                 for (int i = 0; i < versions.length(); i++) {
                     JSONObject version = versions.getJSONObject(i);
-                    if (!"release".equals(version.optString("type"))) continue;
                     foundIds.add(version.optString("id", ""));
                     foundUrls.add(version.optString("url", ""));
+                    foundTypes.add(version.optString("type", "release"));
                 }
-                synchronized (releaseIds) {
-                    releaseIds.clear();
-                    releaseIds.addAll(foundIds);
-                    releaseUrls.clear();
-                    releaseUrls.addAll(foundUrls);
+                synchronized (allVersionIds) {
+                    allVersionIds.clear(); allVersionIds.addAll(foundIds);
+                    allVersionUrls.clear(); allVersionUrls.addAll(foundUrls);
+                    allVersionTypes.clear(); allVersionTypes.addAll(foundTypes);
                 }
                 result = display.toString();
             } catch (Exception exception) {
@@ -251,17 +329,15 @@ public final class MainActivity extends Activity {
                     return;
                 }
                 versionsOutput.setText(displayResult);
-                List<String> ids;
-                synchronized (releaseIds) { ids = new ArrayList<>(releaseIds); }
-                if (!ids.isEmpty()) {
-                    ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                            android.R.layout.simple_spinner_item, ids);
-                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                    versionSpinner.setAdapter(adapter);
+                if (!allVersionIds.isEmpty()) {
                     SharedPreferences prefs = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
                     String saved = prefs.getString("selected_version", latestVersionFromDisplay(displayResult));
-                    int selected = ids.indexOf(saved);
-                    versionSpinner.setSelection(selected >= 0 ? selected : 0);
+                    updatingVersionControls = true;
+                    typeSpinner.setSelection(prefs.getInt("version_type_filter", 1));
+                    updatingVersionControls = false;
+                    filterVersions();
+                    int selected = visibleVersionIds.indexOf(saved);
+                    if (selected >= 0) versionSpinner.setSelection(selected);
                 }
                 versionsButton.setEnabled(true);
                 versionsButton.setText("ATUALIZAR VERSÕES");
@@ -278,19 +354,76 @@ public final class MainActivity extends Activity {
         return "";
     }
 
+    private void filterVersions() {
+        if (versionSpinner == null || typeSpinner == null || versionSearch == null) return;
+        String query = versionSearch.getText().toString().trim().toLowerCase(java.util.Locale.ROOT);
+        int filter = typeSpinner.getSelectedItemPosition();
+        getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
+                .putInt("version_type_filter", filter).apply();
+        String previous = versionSpinner.getSelectedItem() == null ? ""
+                : String.valueOf(versionSpinner.getSelectedItem());
+        List<String> ids = new ArrayList<>(), urls = new ArrayList<>(), types = new ArrayList<>();
+        synchronized (allVersionIds) {
+            for (int i = 0; i < allVersionIds.size(); i++) {
+                String type = allVersionTypes.get(i);
+                boolean matchesType = filter == 0
+                        || (filter == 1 && "release".equals(type))
+                        || (filter == 2 && "snapshot".equals(type))
+                        || (filter == 3 && "old_beta".equals(type))
+                        || (filter == 4 && "old_alpha".equals(type));
+                if (!matchesType || !allVersionIds.get(i).toLowerCase(java.util.Locale.ROOT).contains(query)) continue;
+                ids.add(allVersionIds.get(i)); urls.add(allVersionUrls.get(i)); types.add(type);
+            }
+        }
+        synchronized (visibleVersionIds) {
+            visibleVersionIds.clear(); visibleVersionIds.addAll(ids);
+            visibleVersionUrls.clear(); visibleVersionUrls.addAll(urls);
+            visibleVersionTypes.clear(); visibleVersionTypes.addAll(types);
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, ids);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        updatingVersionControls = true;
+        versionSpinner.setAdapter(adapter);
+        int selection = ids.indexOf(previous);
+        if (selection < 0) {
+            String saved = getSharedPreferences("launcher_preferences", MODE_PRIVATE)
+                    .getString("selected_version", "");
+            selection = ids.indexOf(saved);
+        }
+        if (selection >= 0) versionSpinner.setSelection(selection);
+        updatingVersionControls = false;
+        if (versionsOutput != null && !allVersionIds.isEmpty()) {
+            versionsOutput.setText("Versões no manifesto: " + allVersionIds.size()
+                    + "\\nResultados deste filtro: " + ids.size()
+                    + "\\nÚltima release estável: " + getSharedPreferences("launcher_preferences", MODE_PRIVATE)
+                    .getString("latest_release", "consulte o manifesto"));
+        }
+    }
+
+    private String latestVersionFromDisplay(String text) {
+        String prefix = "Última release estável: ";
+        for (String line : text.split("\\n")) {
+            if (line.startsWith(prefix)) return line.substring(prefix.length()).trim();
+        }
+        return "";
+    }
+
     private void loadSelectedVersionMetadata() {
         if (versionSpinner == null || versionSpinner.getSelectedItem() == null) {
-            Toast.makeText(this, "Consulte as versões primeiro.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Consulte o manifesto e escolha uma versão primeiro.", Toast.LENGTH_SHORT).show();
             return;
         }
         String selected = String.valueOf(versionSpinner.getSelectedItem());
         int index;
-        synchronized (releaseIds) { index = releaseIds.indexOf(selected); }
+        synchronized (visibleVersionIds) { index = visibleVersionIds.indexOf(selected); }
         if (index < 0) return;
         final String metadataUrl;
-        synchronized (releaseIds) {
-            if (index >= releaseUrls.size()) return;
-            metadataUrl = releaseUrls.get(index);
+        final String selectedType;
+        synchronized (visibleVersionIds) {
+            if (index >= visibleVersionUrls.size() || index >= visibleVersionTypes.size()) return;
+            metadataUrl = visibleVersionUrls.get(index);
+            selectedType = visibleVersionTypes.get(index);
         }
         getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
                 .putString("selected_version", selected).apply();
@@ -307,15 +440,12 @@ public final class MainActivity extends Activity {
                 connection.setConnectTimeout(12000);
                 connection.setReadTimeout(12000);
                 connection.setRequestProperty("Accept", "application/json");
+                connection.setRequestProperty("User-Agent", "MikaelLauncherPlus/0.1.0");
                 int status = connection.getResponseCode();
-                if (status != HttpURLConnection.HTTP_OK) {
-                    throw new IllegalStateException("O servidor respondeu HTTP " + status + ".");
-                }
+                if (status != HttpURLConnection.HTTP_OK) throw new IllegalStateException("O servidor respondeu HTTP " + status + ".");
                 String body;
-                try (InputStream input = connection.getInputStream();
-                     ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-                    byte[] buffer = new byte[8192];
-                    int total = 0, count;
+                try (InputStream input = connection.getInputStream(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[8192]; int total = 0, count;
                     while ((count = input.read(buffer)) != -1) {
                         total += count;
                         if (total > MAX_MANIFEST_BYTES) throw new IllegalStateException("Metadados excederam o limite.");
@@ -328,27 +458,56 @@ public final class MainActivity extends Activity {
                 JSONObject client = downloads == null ? null : downloads.optJSONObject("client");
                 JSONObject javaVersion = version.optJSONObject("javaVersion");
                 result = "Versão: " + version.optString("id", selected)
-                        + "\nTipo: " + version.optString("type", "não informado")
-                        + "\nData: " + version.optString("releaseTime", "não informada")
-                        + "\nJava requerida: " + (javaVersion == null ? "não informada" : javaVersion.optString("majorVersion", "não informada"))
-                        + "\nArquivo client: " + (client == null ? "não disponível" : client.optString("url", "não disponível"))
-                        + "\nSHA-1: " + (client == null ? "não disponível" : client.optString("sha1", "não disponível"))
-                        + "\n\nOs metadados foram consultados. O download/lançamento do jogo ainda não está implementado.";
+                        + "\\nTipo: " + version.optString("type", selectedType)
+                        + "\\nData: " + version.optString("releaseTime", "não informada")
+                        + "\\nJava requerida: " + (javaVersion == null ? "não informada" : javaVersion.optString("majorVersion", "não informada"))
+                        + "\\nArquivo client: " + (client == null ? "não disponível" : client.optString("url", "não disponível"))
+                        + "\\nSHA-1: " + (client == null ? "não disponível" : client.optString("sha1", "não disponível"))
+                        + "\\nTamanho do client: " + (client == null ? "não informado" : client.optString("size", "não informado"))
+                        + "\\n\\nMetadados consultados; download e inicialização do jogo ainda não estão implementados.";
             } catch (Exception exception) {
                 String message = exception.getMessage();
-                result = "Não foi possível obter os metadados da versão.\n"
+                result = "Não foi possível obter os metadados da versão.\\n"
                         + (message == null ? exception.getClass().getSimpleName() : message);
-            } finally {
-                if (connection != null) connection.disconnect();
-            }
+            } finally { if (connection != null) connection.disconnect(); }
             final String displayResult = result;
             mainHandler.post(() -> {
                 if (isFinishing() || isDestroyed() || versionsOutput == null || metadataButton == null) return;
+                lastMetadataText = displayResult;
                 versionsOutput.setText(displayResult);
                 metadataButton.setEnabled(true);
                 metadataButton.setText("VER METADADOS DA VERSÃO");
+                copyMetadataButton.setEnabled(true);
             });
         });
+    }
+
+    private void copyLastMetadata() {
+        if (lastMetadataText == null || lastMetadataText.trim().isEmpty()) {
+            Toast.makeText(this, "Consulte os metadados de uma versão primeiro.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(ClipData.newPlainText("Metadados Minecraft", lastMetadataText));
+            Toast.makeText(this, "Metadados copiados.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void refreshDeviceDiagnostics() {
+        if (deviceOutput == null) return;
+        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
+        if (manager != null) manager.getMemoryInfo(info);
+        long availableMb = info.availMem / (1024L * 1024L);
+        long totalMb = info.totalMem / (1024L * 1024L);
+        String device = Build.MANUFACTURER + " " + Build.MODEL;
+        deviceOutput.setText("Dispositivo: " + device
+                + "\\nAndroid: " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")"
+                + "\\nMemória RAM total reportada: " + totalMb + " MB"
+                + "\\nRAM disponível neste momento: " + availableMb + " MB"
+                + "\\nHeap máxima do app: " + (Runtime.getRuntime().maxMemory() / (1024L * 1024L)) + " MB"
+                + "\\nDiagnóstico informativo; não altera nem reserva RAM para o Minecraft.");
     }
 
     private void addModule(LinearLayout parent, String heading, String description) {
