@@ -166,6 +166,7 @@ jobs:
 
           root = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch")
           extra = "com.mikael.launcherplus.extra.REQUESTED_VERSION"
+          loader_extra = "com.mikael.launcherplus.extra.REQUESTED_LOADER"
 
           bootstrap = root / "TestStorageActivity.java"
           text = bootstrap.read_text()
@@ -175,6 +176,10 @@ jobs:
               "        String requestedVersion = getIntent().getStringExtra(\"" + extra + "\");\n"
               "        if (requestedVersion != null && requestedVersion.matches(\"[A-Za-z0-9._-]{1,100}\")) {\n"
               "            intent.putExtra(\"" + extra + "\", requestedVersion);\n"
+              "        }\n"
+              "        String requestedLoader = getIntent().getStringExtra(\"" + loader_extra + "\");\n"
+              "        if (\"Vanilla\".equals(requestedLoader) || \"Forge\".equals(requestedLoader) || \"Fabric\".equals(requestedLoader) || \"OptiFine\".equals(requestedLoader) || \"Forge + OptiFine\".equals(requestedLoader)) {\n"
+              "            intent.putExtra(\"" + loader_extra + "\", requestedLoader);\n"
               "        }"
           )
           if text.count(old) != 1:
@@ -191,8 +196,13 @@ jobs:
           field_anchor = "    private mcAccountSpinner mAccountSpinner;"
           fields = (
               "    private String mikaelRequestedVersion;\n"
+              "    private String mikaelRequestedLoader;\n"
               "    private boolean mikaelLaunchScheduled;\n"
               "    private int mikaelLaunchAttempts;\n"
+              "    private boolean mikaelLoaderNavigationScheduled;\n"
+              "    private int mikaelLoaderNavigationAttempts;\n"
+              "    private boolean mikaelPendingInstallResumeScheduled;\n"
+              "    private int mikaelPendingInstallAttempts;\n"
               + field_anchor
           )
           if text.count(field_anchor) != 1:
@@ -206,6 +216,7 @@ jobs:
           on_create_replacement = (
               "        super.onCreate(savedInstanceState);\n"
               "        mikaelRequestedVersion = getIntent().getStringExtra(\"" + extra + "\");\n"
+              "        mikaelRequestedLoader = getIntent().getStringExtra(\"" + loader_extra + "\");\n"
               "        setContentView(R.layout.activity_pojav_launcher);"
           )
           if text.count(on_create) != 1:
@@ -224,6 +235,8 @@ jobs:
               "        super.onResume();\n"
               "        ContextExecutor.setActivity(this);\n"
               "        mInstallTracker.attach();\n"
+              "        maybeOpenMikaelRequestedLoaderInstaller();\n"
+              "        maybeResumeMikaelPendingInstaller();\n"
               "        maybeLaunchMikaelRequestedVersion();\n"
               "    }"
           )
