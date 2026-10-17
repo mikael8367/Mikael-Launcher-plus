@@ -80,3 +80,8 @@ Compilar um APK é apenas uma verificação de build. A conclusão real exige in
 ## Segurança
 
 Não coloque tokens, senhas ou chaves privadas no repositório. Use GitHub Actions Secrets para segredos de CI. O launcher não deve distribuir arquivos proprietários do Minecraft; o usuário deve obter os arquivos do jogo por meios autorizados.
+
+
+## Plano de implementação completa
+
+O backlog executável com as etapas restantes, critérios de aceite, segurança, loaders, runtime, contas, mods e testes está em [docs/FULL-IMPLEMENTATION-BACKLOG.md](docs/FULL-IMPLEMENTATION-BACKLOG.md). Esse documento é um plano de trabalho; não significa que os itens já estejam implementados.
