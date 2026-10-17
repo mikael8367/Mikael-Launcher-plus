@@ -81,7 +81,8 @@ public final class InstanceManager {
             throw new IllegalArgumentException("Escolha uma versão válida do manifesto primeiro.");
         }
         if (!("Vanilla".equals(safeLoader) || "Forge".equals(safeLoader)
-                || "Fabric".equals(safeLoader) || "OptiFine".equals(safeLoader)
+                || "Fabric".equals(safeLoader) || "Quilt".equals(safeLoader)
+                || "NeoForge".equals(safeLoader) || "OptiFine".equals(safeLoader)
                 || "Forge + OptiFine".equals(safeLoader))) {
             throw new IllegalArgumentException("Tipo de instalação não reconhecido.");
         }
