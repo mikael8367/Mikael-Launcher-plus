@@ -169,7 +169,44 @@ public final class InstanceReadinessChecker {
                         : "Assets não foram totalmente instalados, o índice foi alterado/está ausente ou os totais registrados estão inconsistentes.");
         if (!assetsRecorded) blockers.put("Baixe e verifique todos os assets oficiais desta instância.");
 
-        blockers.put("Bibliotecas Minecraft ainda não foram baixadas e verificadas por esta instância.");
+        boolean librariesRecorded = false;
+        String libraryStatus = profile.optString("libraryInstallStatus", "");
+        String libraryVersion = profile.optString("libraryVersion", "");
+        String librarySha1 = profile.optString("libraryManifestSha1", "").toLowerCase(Locale.ROOT);
+        String libraryPath = profile.optString("libraryManifestRelativePath", "");
+        long libraryVerified = profile.optLong("libraryVerifiedCount", -1L);
+        long libraryPlanned = profile.optLong("libraryPlannedCount", -1L);
+        if ("libraries_staged".equals(libraryStatus) && profile.optBoolean("librariesInstalled", false)
+                && stagedVersion.equals(libraryVersion)
+                && "libraries/manifest.json".equals(libraryPath)
+                && librarySha1.matches("[0-9a-f]{40}")
+                && libraryVerified > 0 && libraryVerified == libraryPlanned
+                && profile.optLong("libraryUnresolvedCount", -1L) == 0) {
+            File libraryManifest = safeChild(instanceDirectory, libraryPath);
+            if (libraryManifest.isFile() && libraryManifest.length() > 0
+                    && libraryManifest.length() <= 16L * 1024L * 1024L
+                    && librarySha1.equals(sha1(libraryManifest))) {
+                try {
+                    JSONObject manifest = readJsonObject(libraryManifest, 16 * 1024 * 1024);
+                    JSONArray entries = manifest.optJSONArray("libraries");
+                    JSONArray unresolved = manifest.optJSONArray("unresolved");
+                    librariesRecorded = stagedVersion.equals(manifest.optString("version", ""))
+                            && "libraries_staged".equals(manifest.optString("status", ""))
+                            && entries != null && entries.length() == libraryVerified
+                            && unresolved != null && unresolved.length() == 0
+                            && manifest.optLong("verifiedCount", -1L) == libraryVerified
+                            && manifest.optLong("plannedCount", -1L) == libraryPlanned;
+                } catch (Exception ignored) {
+                    librariesRecorded = false;
+                }
+            }
+        }
+        addCheck(checks, "Bibliotecas Java", librariesRecorded,
+                librariesRecorded
+                        ? "Manifesto de bibliotecas verificado por SHA-1 e contagens; esta checagem rápida não revalida cada JAR."
+                        : "Bibliotecas ainda não estão completas, há itens não resolvidos ou o manifesto não corresponde ao perfil.");
+        if (!librariesRecorded) blockers.put("Baixe e verifique as bibliotecas Java Vanilla; resolva os itens pendentes do manifesto.");
+
         blockers.put("Um runtime Java compatível ainda não foi associado e validado.");
         blockers.put("A instância privada ainda não está conectada ao diretório de jogo usado pelo motor Amethyst/Pojav.");
 
@@ -183,6 +220,7 @@ public final class InstanceReadinessChecker {
         result.put("clientJarVerified", clientValid);
         result.put("clientArtifactsVerified", metadataValid && clientValid && statusRecorded);
         result.put("assetsRecordedInstalled", assetsRecorded);
+        result.put("librariesRecordedInstalled", librariesRecorded);
         result.put("readyToLaunch", false);
         result.put("status", metadataValid && clientValid && statusRecorded && sameVersion
                 ? (assetsRecorded ? "client_and_assets_verified_not_playable"
