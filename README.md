@@ -5,9 +5,14 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 ## Estado atual
 
 - [x] Consulta do manifesto oficial da Mojang, com seleção de releases estáveis e consulta de metadados da versão (tipo, data, versão de Java, URL e SHA-1 do client).
-- [ ] Implementar download de arquivos, validação SHA-1 e instalação em instância.\n- [x] Filtrar versões por release, snapshot, beta antiga e alpha antiga; pesquisar por identificador e guardar a seleção.\n- [x] Consultar e copiar metadados de uma versão.\n- [x] Exibir diagnóstico informativo do Android e da memória disponível.\n- [x] Salvar preferências de RAM e renderizador para uso futuro; ainda não aplicadas ao jogo.
+- [ ] Implementar download de arquivos, validação SHA-1 e instalação em instância.
+- [x] Filtrar versões por release, snapshot, beta antiga e alpha antiga; pesquisar por identificador e guardar a seleção.
+- [x] Consultar e copiar metadados de uma versão.
+- [x] Exibir diagnóstico informativo do Android e da memória disponível.
+- [x] Salvar preferências de RAM e renderizador para uso futuro; ainda não aplicadas ao jogo.
 - [x] Projeto Android Java mínimo criado.
-- [x] Workflow automático para validar o código Java sem empacotar APK.\n- [x] Workflow de APK do motor configurado para execução manual, somente quando solicitado.
+- [x] Workflow automático para validar o código Java sem empacotar APK.
+- [x] Workflow de APK do motor configurado para execução manual, somente quando solicitado.
 - [x] Workflow separado para compilar uma base de motor Minecraft Android upstream, em revisão de compatibilidade/licenças.
 - [x] Revisão inicial do erro de CI: a action de setup do Android SDK tentava instalar o pacote legado inexistente `tools`; os workflows foram alterados para usar o SDK pré-instalado no runner e instalar as plataformas necessárias.
 - [ ] Validar compilação do código Java no GitHub Actions sem gerar APK.
@@ -18,8 +23,8 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 
 ## Workflows
 
-- [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): compila o app mínimo de desenvolvimento.
-- [Minecraft engine base (Amethyst)](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/minecraft-engine-base.yml): clona o código-fonte upstream em uma revisão fixa, ajusta o compileSdk para Android 16 QPR2 (API 36.1), aplica um rótulo de teste Mikael e tenta compilar o módulo `:app_pojavlauncher:assembleDebug`. O APK produzido por este workflow é a base Amethyst upstream, não deve ser confundido com um Mikael Launcher Plus integrado e finalizado.
+- [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): compila o código Java e não empacota APK.
+- [Minecraft engine base (Amethyst)](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/minecraft-engine-base.yml): clona o código-fonte upstream em uma revisão fixa, ajusta o compileSdk para Android 16 QPR2 (API 36.1), aplica um rótulo de teste Mikael e tenta compilar o módulo `:app_pojavlauncher:assembleDebug`. Esse workflow de APK exige disparo manual e, se executado, produz uma base Amethyst upstream, não um Mikael Launcher Plus integrado e finalizado.
 
 O workflow automático de validação não gera APK. O workflow do motor pode gerar APK, mas só inicia manualmente; não o execute até Mikael pedir explicitamente.
 
