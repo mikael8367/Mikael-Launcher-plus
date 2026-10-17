@@ -240,7 +240,11 @@ public final class VanillaLibraryInstaller {
             savePartial(instanceName, version, recordedMetadataSha1, verifiedCount, libraries.size(), totalBytes);
             throw e;
         } catch (JSONException e) {
+            savePartial(instanceName, version, recordedMetadataSha1, verifiedCount, libraries.size(), totalBytes);
             throw new IOException("Não foi possível criar o manifesto verificado de bibliotecas.", e);
+        } catch (IOException e) {
+            savePartial(instanceName, version, recordedMetadataSha1, verifiedCount, libraries.size(), totalBytes);
+            throw e;
         } finally {
             deleteTempQuietly(manifestTemp);
         }
