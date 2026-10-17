@@ -85,19 +85,40 @@ O trabalho é feito por etapas. Uma etapa só é considerada concluída quando e
 
 ## Etapa 6 — integridade e prontidão da instância
 
-**Estado: diagnóstico de integridade implementado parcialmente; compilação e teste em aparelho pendentes.**
+**Estado: diagnóstico implementado parcialmente; compilação do app isolado passou antes da etapa 7, validação integrada e teste em aparelho pendentes.**
 
 - [x] Adicionar o botão **Verificar integridade da instância**.
 - [x] Validar o perfil local, a correspondência entre versão selecionada e preparada, e a presença do JSON e do JAR do cliente.
 - [x] Recalcular SHA-1 dos artefatos e comparar metadados, tamanho e hash declarado do cliente.
 - [x] Mostrar os bloqueios restantes sem marcar o jogo como instalado ou jogável.
 - [x] Incluir a classe de diagnóstico no workflow de validação do código integrado ao motor.
-- [ ] Confirmar que a compilação Java volta a passar depois da correção do erro em `MainActivity.java`.
+- [x] Corrigir a variável final em `MainActivity.java` e confirmar compilação Java do app isolado no GitHub Actions (execução 39041576841, antes das alterações da etapa 7).
 - [ ] Adicionar testes de regressão para arquivos ausentes, alterados, truncados e versão divergente.
 - [ ] Validar o diagnóstico em aparelho físico; verificar que ele não altera nem corrompe instâncias.
 - [ ] Completar o download de bibliotecas/assets/runtime e conectar a instância ao diretório real do motor.
 
 **Limite explícito:** mesmo que o JSON e o JAR do cliente sejam verificados, a checagem sempre informa que a instância não está pronta para iniciar enquanto as dependências de execução e a ligação ao diretório do motor não estiverem implementadas e testadas.
+
+## Etapa 7 — baixar e verificar assets oficiais Vanilla
+
+**Estado: implementação adicionada; a nova compilação CI e o teste em aparelho ainda estão pendentes.**
+
+- [x] Ler o índice de assets indicado pelo JSON oficial da versão Vanilla.
+- [x] Validar a URL HTTPS por uma lista de domínios oficiais permitidos.
+- [x] Verificar o SHA-1 e o tamanho do índice e de cada objeto baixado.
+- [x] Deduplicar objetos pelo hash e verificar arquivos locais antes de baixá-los novamente.
+- [x] Fazer pré-verificação de espaço livre, limitar quantidade/tamanho e rejeitar caminhos de asset inválidos.
+- [x] Implementar cancelamento cooperativo, apagar downloads .part incompletos e manter objetos verificados para continuar depois.
+- [x] Gerar caminhos legados quando o índice marca virtual ou map_to_resources.
+- [x] Persistir o estado dos assets por instância e exibir progresso, cancelamento e resultado no dashboard.
+- [x] Atualizar o diagnóstico de prontidão para verificar o índice e o último registro de conclusão dos assets.
+- [x] Incluir a classe nova no workflow de validação do motor sem APK.
+- [ ] Confirmar compilação Java do código atualizado no GitHub Actions.
+- [ ] Testar os downloads com versões reais, rede interrompida, cancelamento, espaço insuficiente e retomada.
+- [ ] Medir duração e uso de armazenamento no Galaxy A12.
+- [ ] Baixar/verificar as bibliotecas de execução, selecionar runtime Java compatível e conectar a instância ao diretório efetivamente usado pelo motor.
+
+**Limite explícito:** a conclusão desta etapa significa somente que os assets foram baixados e verificados. Bibliotecas, runtime Java, integração ao diretório do motor e teste real de inicialização continuam pendentes; gameInstalled e readyToLaunch permanecem falsos.
 
 ## Regras de validação
 
