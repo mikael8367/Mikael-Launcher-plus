@@ -253,6 +253,60 @@ public final class InstanceManager {
         }
     }
 
+    public synchronized void updateLibraryStatus(String name, JSONObject libraries)
+            throws IOException, JSONException {
+        String safeName = validateName(name);
+        String status = libraries == null ? "" : libraries.optString("status", "");
+        if (!"libraries_staged".equals(status) && !"libraries_partial".equals(status)) {
+            throw new IllegalArgumentException("Estado de bibliotecas inválido.");
+        }
+        String version = libraries.optString("version", "");
+        String sha1 = libraries.optString("manifestSha1", "").toLowerCase(Locale.ROOT);
+        String relativePath = libraries.optString("manifestRelativePath", "");
+        long verified = libraries.optLong("verifiedCount", -1L);
+        long planned = libraries.optLong("plannedCount", -1L);
+        if (!version.matches("[A-Za-z0-9._-]{1,100}")
+                || !sha1.matches("[0-9a-f]{40}")
+                || !"libraries/manifest.json".equals(relativePath)
+                || verified < 0 || planned < 0 || verified > planned) {
+            throw new IllegalArgumentException("Metadados do manifesto de bibliotecas inválidos.");
+        }
+        JSONArray records = getInstances();
+        JSONObject matched = null;
+        for (int i = 0; i < records.length(); i++) {
+            JSONObject record = records.getJSONObject(i);
+            if (safeName.equals(record.optString("name", ""))) {
+                matched = record;
+                record.put("libraryInstallStatus", status);
+                record.put("libraryVersion", version);
+                record.put("libraryManifestSha1", sha1);
+                record.put("libraryManifestRelativePath", relativePath);
+                record.put("libraryVerifiedCount", verified);
+                record.put("libraryPlannedCount", planned);
+                record.put("libraryTotalBytes", Math.max(0L, libraries.optLong("totalBytes", 0L)));
+                record.put("libraryUnresolvedCount", Math.max(0L, libraries.optLong("unresolvedCount", 0L)));
+                record.put("librariesInstalled", "libraries_staged".equals(status));
+                record.put("gameInstalled", false);
+                break;
+            }
+        }
+        if (matched == null) throw new IllegalArgumentException("A instância selecionada não existe mais.");
+        File profileFile = new File(getInstanceDirectory(safeName), "instance.json");
+        JSONObject profile = readJsonFile(profileFile, 256 * 1024);
+        profile.put("libraryInstallStatus", status);
+        profile.put("libraryVersion", version);
+        profile.put("libraryManifestSha1", sha1);
+        profile.put("libraryManifestRelativePath", relativePath);
+        profile.put("libraryVerifiedCount", verified);
+        profile.put("libraryPlannedCount", planned);
+        profile.put("libraryTotalBytes", Math.max(0L, libraries.optLong("totalBytes", 0L)));
+        profile.put("libraryUnresolvedCount", Math.max(0L, libraries.optLong("unresolvedCount", 0L)));
+        profile.put("librariesInstalled", "libraries_staged".equals(status));
+        profile.put("gameInstalled", false);
+        writeJsonAtomically(profileFile, profile);
+        writeJsonAtomically(indexFile, records);
+    }
+
     public synchronized boolean deleteInstance(String name) throws IOException, JSONException {
         String safeName = validateName(name);
         JSONArray current = getInstances();
