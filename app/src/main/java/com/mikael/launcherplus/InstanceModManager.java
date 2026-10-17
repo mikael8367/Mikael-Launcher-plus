@@ -68,6 +68,23 @@ public final class InstanceModManager {
             if (!complete || !temporary.isFile()) temporary.delete();
         }
 
+        String importedSha256 = toHex(digest.digest());
+        File[] existingMods = modsDirectory.listFiles();
+        if (existingMods == null) {
+            temporary.delete();
+            throw new IOException("Não foi possível verificar duplicados na pasta de mods.");
+        }
+        for (File existing : existingMods) {
+            if (!existing.isFile() || !existing.getName().toLowerCase(Locale.ROOT).endsWith(".jar")) continue;
+            if (existing.getName().equalsIgnoreCase(safeName)) {
+                temporary.delete();
+                throw new IllegalArgumentException("Já existe um arquivo com esse nome nesta instância.");
+            }
+            if (importedSha256.equals(sha256(existing))) {
+                temporary.delete();
+                throw new IllegalArgumentException("Este JAR já está nesta instância com outro nome (conteúdo SHA-256 idêntico).");
+            }
+        }
         if (target.exists()) {
             temporary.delete();
             throw new IllegalArgumentException("Já existe um arquivo com esse nome nesta instância.");
@@ -81,7 +98,7 @@ public final class InstanceModManager {
         try {
             result.put("name", safeName);
             result.put("sizeBytes", total);
-            result.put("sha256", toHex(digest.digest()));
+            result.put("sha256", importedSha256);
         } catch (org.json.JSONException e) {
             target.delete();
             throw new IOException("Não foi possível preparar os metadados do arquivo.", e);
@@ -160,6 +177,21 @@ public final class InstanceModManager {
             throw new IllegalArgumentException("Selecione um arquivo JAR com nome válido.");
         }
         return name;
+    }
+
+    private String sha256(File file) throws IOException {
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IOException("SHA-256 não está disponível.", impossible);
+        }
+        try (InputStream input = new FileInputStream(file)) {
+            byte[] buffer = new byte[64 * 1024];
+            int count;
+            while ((count = input.read(buffer)) != -1) digest.update(buffer, 0, count);
+        }
+        return toHex(digest.digest());
     }
 
     private String toHex(byte[] bytes) {
