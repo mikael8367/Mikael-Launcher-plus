@@ -309,18 +309,7 @@ public final class MainActivity extends Activity {
         spinnerParams.topMargin = dp(12);
         versionsCard.addView(versionSpinner, spinnerParams);
 
-        versionsCard.addView(text("Nome da nova versão", 14, TEXT, true));
-        instanceNameInput = new EditText(this);
-        instanceNameInput.setSingleLine(true);
-        instanceNameInput.setTextSize(15);
-        instanceNameInput.setTextColor(TEXT);
-        instanceNameInput.setHintTextColor(MUTED);
-        instanceNameInput.setHint("Ex.: Survival 1.12.2");
-        instanceNameInput.setPadding(dp(12), 0, dp(12), 0);
-        instanceNameInput.setBackground(roundRect(BACKGROUND, 12, BORDER, 1));
-        LinearLayout.LayoutParams instanceNameParams = params(-1, dp(50));
-        instanceNameParams.topMargin = dp(8);
-        versionsCard.addView(instanceNameInput, instanceNameParams);
+        versionsCard.addView(text("1. Selecione a versão do Minecraft", 14, TEXT, true));
 
         TextView creationFlowNote = text(
                 "Escolha a versão do Minecraft acima e depois selecione o modloader. "
@@ -1053,24 +1042,17 @@ public final class MainActivity extends Activity {
     }
 
     private void createLocalInstance() {
-        if (instanceManager == null || instanceNameInput == null || versionSpinner == null) {
+        if (instanceManager == null || versionSpinner == null) {
             Toast.makeText(this, "O gerenciador de versões não está disponível.", Toast.LENGTH_LONG).show();
-            return;
-        }
-        String name = instanceNameInput.getText().toString().trim();
-        if (name.isEmpty()) {
-            instanceNameInput.setError("Digite um nome para a versão");
-            instanceNameInput.requestFocus();
-            Toast.makeText(this, "Digite o nome da versão antes de continuar.", Toast.LENGTH_LONG).show();
             return;
         }
         Object selected = versionSpinner.getSelectedItem();
         String version = selected == null ? "" : String.valueOf(selected).trim();
         if (version.isEmpty() || !version.matches("[A-Za-z0-9._-]{1,100}")) {
-            Toast.makeText(this, "Primeiro consulte o manifesto oficial e selecione uma versão do Minecraft.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Toque em CONSULTAR VERSÕES e selecione uma versão na lista.", Toast.LENGTH_LONG).show();
             return;
         }
-        showLoaderChoiceDialog(name, version);
+        showLoaderChoiceDialog("", version);
     }
 
     private void showLoaderChoiceDialog(String name, String version) {
@@ -1084,7 +1066,7 @@ public final class MainActivity extends Activity {
         LinearLayout loaderDialogContent = new LinearLayout(this);
         loaderDialogContent.setOrientation(LinearLayout.VERTICAL);
         loaderDialogContent.setPadding(dp(20), dp(8), dp(20), dp(8));
-        loaderDialogContent.addView(text("ETAPA 2 DE 2", 11, EMERALD, true));
+        loaderDialogContent.addView(text("2. Escolha o modloader", 14, TEXT, true));
         loaderDialogContent.addView(text("Minecraft " + version + "\\nAgora escolha o modloader.", 14, MUTED, false));
         loaderDialogContent.addView(loaderChoice, params(-1, dp(52)));
 
@@ -1092,8 +1074,12 @@ public final class MainActivity extends Activity {
                 .setTitle("Escolha o modloader")
                 .setView(loaderDialogContent)
                 .setNegativeButton("CANCELAR", (dialog, which) -> dialog.dismiss())
-                .setPositiveButton("CRIAR E BAIXAR", (dialog, which) ->
-                        createAndInstallVersion(name, version, String.valueOf(loaderChoice.getSelectedItem())))
+                .setPositiveButton("CRIAR E BAIXAR", (dialog, which) -> {
+                    String loader = String.valueOf(loaderChoice.getSelectedItem());
+                    String profileName = (name == null || name.trim().isEmpty())
+                            ? "Minecraft " + version + " - " + loader : name.trim();
+                    createAndInstallVersion(profileName, version, loader);
+                })
                 .show();
     }
 
@@ -1103,7 +1089,6 @@ public final class MainActivity extends Activity {
             getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
                     .putString("active_instance_name", created.getString("name"))
                     .putString("selected_version", version).apply();
-            instanceNameInput.setText("");
             refreshInstancesList();
 
             boolean opened = MinecraftEngineBridge.openVersionInstaller(this, version, loader, name);
