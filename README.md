@@ -5,7 +5,9 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 ## Estado atual
 
 - [x] Consulta do manifesto oficial da Mojang, com seleção de releases estáveis e consulta de metadados da versão (tipo, data, versão de Java, URL e SHA-1 do client).
-- [ ] Implementar download de arquivos, validação SHA-1 e instalação em instância.
+- [ ] Implementar download dos arquivos oficiais, validação SHA-1 e instalação real em instância.
+- [x] Criar perfis locais privados com diretórios separados para mods, resourcepacks, shaderpacks, saves, config e logs.
+- [x] Persistir nome, versão escolhida e perfil de loader em `instance.json`, com seleção e exclusão do perfil.
 - [x] Filtrar versões por release, snapshot, beta antiga e alpha antiga; pesquisar por identificador e guardar a seleção.
 - [x] Consultar e copiar metadados de uma versão.
 - [x] Exibir diagnóstico informativo do Android e da memória disponível.
@@ -21,9 +23,13 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 - [ ] Testar instalação e início de Minecraft em dispositivo físico.
 - [ ] Validar versões, loaders, contas, instâncias e mods.
 
+## Instâncias locais
+
+Os perfis são criados dentro do diretório privado do app (`files/instances/`), com um arquivo `instance.json` e diretórios de preparação. A seleção do loader é somente metadado do perfil: Forge/Fabric/OptiFine não são instalados por esse recurso. O jogo, as bibliotecas, o runtime Java e o lançamento real continuam pendentes.
+
 ## Workflows
 
-- [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): compila o código Java e não empacota APK.
+- [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): valida a compilação do código Java e não empacota APK.
 - [Minecraft engine base (Amethyst)](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/minecraft-engine-base.yml): clona o código-fonte upstream em uma revisão fixa, ajusta o compileSdk para Android 16 QPR2 (API 36.1), aplica um rótulo de teste Mikael e tenta compilar o módulo `:app_pojavlauncher:assembleDebug`. Esse workflow de APK exige disparo manual e, se executado, produz uma base Amethyst upstream, não um Mikael Launcher Plus integrado e finalizado.
 
 O workflow automático de validação não gera APK. O workflow do motor pode gerar APK, mas só inicia manualmente; não o execute até Mikael pedir explicitamente.
