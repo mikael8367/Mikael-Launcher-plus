@@ -65,6 +65,26 @@ jobs:
           path.write_text(content.replace("compileSdk = 37", replacement, 1))
           PY
 
+      - name: Apply development app label
+        working-directory: upstream/Amethyst-Android
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("app_pojavlauncher/build.gradle")
+          content = path.read_text()
+          replacements = {
+              'resValue "string", "app_name", "Amethyst (Debug)"':
+                  'resValue "string", "app_name", "Mikael Launcher Plus (Engine Test)"',
+              'resValue "string", "app_short_name", "Amethyst (Debug)"':
+                  'resValue "string", "app_short_name", "Mikael Launcher Plus"',
+          }
+          for old, new in replacements.items():
+              if old not in content:
+                  raise SystemExit("Expected debug app label not found: " + old)
+              content = content.replace(old, new, 1)
+          path.write_text(content)
+          PY
+
       - name: Build upstream Android launcher
         working-directory: upstream/Amethyst-Android
         run: ./gradlew --no-daemon --stacktrace :app_pojavlauncher:assembleDebug
