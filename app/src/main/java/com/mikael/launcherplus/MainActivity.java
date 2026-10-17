@@ -655,10 +655,11 @@ public final class MainActivity extends Activity {
         accountAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         accountSpinner.setAdapter(accountAdapter);
         settingsCard.addView(accountSpinner, params(-1, dp(48)));
-        TextView accountNote = text("A seleção fica salva neste aparelho. O login Microsoft/ely.by ainda precisa ser integrado para autenticar de verdade.", 12, MUTED, false);
+        TextView accountNote = text("", 12, MUTED, false);
         LinearLayout.LayoutParams accountNoteParams = params(-1, -2);
         accountNoteParams.topMargin = dp(6);
         settingsCard.addView(accountNote, accountNoteParams);
+        updateAccountStatusLabel(accountNote);
 
         Button manageAccountsButton = primaryButton("CRIAR / ADICIONAR CONTA", true);
         LinearLayout.LayoutParams manageAccountsParams = params(-1, dp(48));
@@ -678,6 +679,12 @@ public final class MainActivity extends Activity {
         accountSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 preferences.edit().putInt("account_type_index", position).putString("preferred_account_type", accountTypes[position]).apply();
+                updateAccountStatusLabel(accountNote);
+                if (position == 1 || position == 2) {
+                    Toast.makeText(MainActivity.this,
+                            "O login " + accountTypes[position] + " ainda não está integrado. Selecione Offline para usar um perfil local.",
+                            Toast.LENGTH_LONG).show();
+                }
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
         });
@@ -1893,12 +1900,26 @@ public final class MainActivity extends Activity {
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
+    private void updateAccountStatusLabel(TextView label) {
+        if (label == null) return;
+        SharedPreferences prefs = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
+        String type = prefs.getString("preferred_account_type", "Offline (nome de jogador)");
+        String username = prefs.getString("offline_username", "").trim();
+        if ("Offline (nome de jogador)".equals(type)) {
+            label.setText(username.isEmpty()
+                    ? "Conta selecionada: nenhuma. Crie um perfil offline abaixo. Microsoft/ely.by ainda não têm login integrado."
+                    : "Conta selecionada: " + username + " (offline). Microsoft/ely.by ainda não têm login integrado.");
+        } else {
+            label.setText("Tipo selecionado: " + type + ". O cadastro externo não conecta a conta ao jogo; o login ainda não está integrado.");
+        }
+    }
+
     private void showAccountManager() {
         String[] actions = {
-                "Criar conta offline (nome de jogador)",
-                "Criar conta Microsoft",
-                "Criar conta ely.by",
-                "Ver contas salvas"
+                "Criar perfil offline para jogar",
+                "Abrir cadastro Microsoft (login não integrado)",
+                "Abrir cadastro ely.by (login não integrado)",
+                "Ver perfis offline salvos"
         };
         new AlertDialog.Builder(this)
                 .setTitle("Contas do Minecraft")
@@ -1975,10 +1996,17 @@ public final class MainActivity extends Activity {
             accounts = new JSONArray();
         }
         if (accounts.length() == 0) {
+            String legacyUsername = prefs.getString("offline_username", "").trim();
+            if (legacyUsername.matches("[A-Za-z0-9_]{3,16}")) {
+                accounts.put(legacyUsername);
+                prefs.edit().putString("offline_accounts", accounts.toString()).apply();
+            }
+        }
+        if (accounts.length() == 0) {
             new AlertDialog.Builder(this)
-                    .setTitle("Contas salvas")
-                    .setMessage("Você ainda não criou uma conta offline neste aparelho.")
-                    .setPositiveButton("Criar conta", (dialog, which) -> showCreateOfflineAccountDialog())
+                    .setTitle("Perfis offline salvos")
+                    .setMessage("Nenhum perfil offline está salvo neste aplicativo. Abrir o cadastro Microsoft/ely.by não salva uma conta aqui; esses logins ainda não estão integrados.")
+                    .setPositiveButton("Criar perfil offline", (dialog, which) -> showCreateOfflineAccountDialog())
                     .setNegativeButton("Fechar", null)
                     .show();
             return;
