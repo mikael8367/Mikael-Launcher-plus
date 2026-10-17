@@ -7,7 +7,7 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 - [x] Consulta do manifesto oficial da Mojang, com seleção de releases estáveis e consulta de metadados da versão (tipo, data, versão de Java, URL e SHA-1 do client).
 - [ ] Implementar download dos arquivos oficiais, validação SHA-1 e instalação real em instância.
 - [x] Criar perfis locais privados com diretórios separados para mods, resourcepacks, shaderpacks, saves, config e logs.
-- [x] Persistir nome, versão escolhida e perfil de loader em `instance.json`, com seleção e exclusão do perfil.
+- [x] Persistir nome, versão escolhida e perfil de loader em `instance.json`, com seleção e exclusão do perfil.\n- [x] Importar e remover arquivos `.jar` na pasta privada de mods do perfil, com limite de 250 MB e SHA-256 informativo; ainda é armazenamento, não ativação no jogo.\n- [x] Botão **Iniciar Minecraft** tenta abrir uma instalação Amethyst/Pojav detectada no aparelho.\n- [x] Workflow manual preparado para empacotar a interface Mikael junto ao código do motor Amethyst.
 - [x] Filtrar versões por release, snapshot, beta antiga e alpha antiga; pesquisar por identificador e guardar a seleção.
 - [x] Consultar e copiar metadados de uma versão.
 - [x] Exibir diagnóstico informativo do Android e da memória disponível.
@@ -18,21 +18,23 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 - [x] Workflow separado para compilar uma base de motor Minecraft Android upstream, em revisão de compatibilidade/licenças.
 - [x] Revisão inicial do erro de CI: a action de setup do Android SDK tentava instalar o pacote legado inexistente `tools`; os workflows foram alterados para usar o SDK pré-instalado no runner e instalar as plataformas necessárias.
 - [ ] Validar compilação do código Java no GitHub Actions sem gerar APK.
-- [ ] Quando solicitado, validar o build manual do motor upstream.
-- [ ] Integrar o motor e a identidade visual Mikael em um único aplicativo.
+- [ ] Quando solicitado, validar o build manual do motor integrado.
+- [ ] Executar e validar o workflow manual de integração do motor (somente quando Mikael autorizar a geração de APK).
 - [ ] Testar instalação e início de Minecraft em dispositivo físico.
 - [ ] Validar versões, loaders, contas, instâncias e mods.
 
 ## Instâncias locais
 
-Os perfis são criados dentro do diretório privado do app (`files/instances/`), com um arquivo `instance.json` e diretórios de preparação. A seleção do loader é somente metadado do perfil: Forge/Fabric/OptiFine não são instalados por esse recurso. O jogo, as bibliotecas, o runtime Java e o lançamento real continuam pendentes.
+Os perfis são criados dentro do diretório privado do app (`files/instances/`), com um arquivo `instance.json` e diretórios de preparação. A seleção do loader é somente metadado do perfil: Forge/Fabric/OptiFine não são instalados por esse recurso. Arquivos JAR podem ser copiados para `mods/`, listados e removidos, mas ainda não são ligados à pasta real de jogo do motor.
+
+O botão **Iniciar Minecraft** tenta abrir o app Amethyst/Pojav se estiver instalado. No APK integrado preparado pelo workflow manual, o botão chama a tela de inicialização de armazenamento do próprio motor. Isso abre o launcher do motor; autenticação, download da versão e toque em Jogar ainda são necessários para entrar no mundo.
 
 ## Workflows
 
 - [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): valida a compilação do código Java e não empacota APK.
-- [Minecraft engine base (Amethyst)](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/minecraft-engine-base.yml): clona o código-fonte upstream em uma revisão fixa, ajusta o compileSdk para Android 16 QPR2 (API 36.1), aplica um rótulo de teste Mikael e tenta compilar o módulo `:app_pojavlauncher:assembleDebug`. Esse workflow de APK exige disparo manual e, se executado, produz uma base Amethyst upstream, não um Mikael Launcher Plus integrado e finalizado.
+- [Minecraft engine base (Amethyst)](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/minecraft-engine-base.yml): workflow **manual** que clona uma revisão fixa do motor, copia a interface Mikael e as ferramentas de perfis/mods para o módulo Android do motor, troca a atividade inicial pelo dashboard Mikael e tenta compilar `:app_pojavlauncher:assembleDebug`. Não execute até Mikael pedir para gerar APK.
 
-O workflow automático de validação não gera APK. O workflow do motor pode gerar APK, mas só inicia manualmente; não o execute até Mikael pedir explicitamente.
+O workflow automático de validação compila o código Java sem empacotar APK. O workflow do motor pode gerar o APK integrado, mas só inicia manualmente; ele não foi executado nesta etapa.
 
 ## Base técnica e licenças
 
