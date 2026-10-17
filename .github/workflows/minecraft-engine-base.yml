@@ -154,6 +154,132 @@ jobs:
           grep -q 'android:name="com.mikael.launcherplus.MainActivity"' \
             upstream/Amethyst-Android/app_pojavlauncher/src/main/AndroidManifest.xml
 
+          # Forward the selected version through the engine's required storage bootstrap.
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch")
+          extra = "com.mikael.launcherplus.extra.REQUESTED_VERSION"
+
+          bootstrap = root / "TestStorageActivity.java"
+          text = bootstrap.read_text()
+          old = "Intent intent =  new Intent(this, LauncherActivity.class);"
+          new = (
+              "Intent intent = new Intent(this, LauncherActivity.class);\n"
+              "        String requestedVersion = getIntent().getStringExtra(\"" + extra + "\");\n"
+              "        if (requestedVersion != null && requestedVersion.matches(\"[A-Za-z0-9._-]{1,100}\")) {\n"
+              "            intent.putExtra(\"" + extra + "\", requestedVersion);\n"
+              "        }"
+          )
+          if text.count(old) != 1:
+              raise SystemExit("Expected exactly one TestStorageActivity launcher handoff")
+          bootstrap.write_text(text.replace(old, new, 1))
+
+          launcher = root / "LauncherActivity.java"
+          text = launcher.read_text()
+          text = text.replace(
+              "import android.os.Bundle;\n",
+              "import android.os.Bundle;\nimport android.os.Handler;\nimport android.os.Looper;\n",
+              1
+          )
+          field_anchor = "    private mcAccountSpinner mAccountSpinner;"
+          fields = (
+              "    private String mikaelRequestedVersion;\n"
+              "    private boolean mikaelLaunchScheduled;\n"
+              "    private int mikaelLaunchAttempts;\n"
+              + field_anchor
+          )
+          if text.count(field_anchor) != 1:
+              raise SystemExit("Expected exactly one launcher account-spinner field")
+          text = text.replace(field_anchor, fields, 1)
+
+          on_create = (
+              "        super.onCreate(savedInstanceState);\n"
+              "        setContentView(R.layout.activity_pojav_launcher);"
+          )
+          on_create_replacement = (
+              "        super.onCreate(savedInstanceState);\n"
+              "        mikaelRequestedVersion = getIntent().getStringExtra(\"" + extra + "\");\n"
+              "        setContentView(R.layout.activity_pojav_launcher);"
+          )
+          if text.count(on_create) != 1:
+              raise SystemExit("Expected exactly one LauncherActivity onCreate setup")
+          text = text.replace(on_create, on_create_replacement, 1)
+
+          resume = (
+              "    protected void onResume() {\n"
+              "        super.onResume();\n"
+              "        ContextExecutor.setActivity(this);\n"
+              "        mInstallTracker.attach();\n"
+              "    }"
+          )
+          resume_replacement = (
+              "    protected void onResume() {\n"
+              "        super.onResume();\n"
+              "        ContextExecutor.setActivity(this);\n"
+              "        mInstallTracker.attach();\n"
+              "        maybeLaunchMikaelRequestedVersion();\n"
+              "    }"
+          )
+          if text.count(resume) != 1:
+              raise SystemExit("Expected exactly one LauncherActivity onResume")
+          text = text.replace(resume, resume_replacement, 1)
+
+          method_anchor = "    @Override\n    protected void onResume() {"
+          method = (
+              "    private void maybeLaunchMikaelRequestedVersion() {\n"
+              "        if (mikaelRequestedVersion == null || mikaelLaunchScheduled) return;\n"
+              "        mikaelLaunchScheduled = true;\n"
+              "        new Handler(Looper.getMainLooper()).postDelayed(() -> {\n"
+              "            mikaelLaunchScheduled = false;\n"
+              "            if (mikaelRequestedVersion == null || isFinishing()) return;\n"
+              "            if (LauncherProfiles.mainProfileJson == null\n"
+              "                    || LauncherProfiles.mainProfileJson.profiles == null\n"
+              "                    || LauncherProfiles.mainProfileJson.profiles.isEmpty()) {\n"
+              "                if (++mikaelLaunchAttempts < 20) {\n"
+              "                    maybeLaunchMikaelRequestedVersion();\n"
+              "                } else {\n"
+              "                    Toast.makeText(this, \"O perfil do Minecraft ainda não está pronto. Abra o menu e tente novamente.\", Toast.LENGTH_LONG).show();\n"
+              "                    mikaelRequestedVersion = null;\n"
+              "                    getIntent().removeExtra(\"" + extra + "\");\n"
+              "                }\n"
+              "                return;\n"
+              "            }\n"
+              "            String selectedProfile = LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, \"\");\n"
+              "            if (!LauncherProfiles.mainProfileJson.profiles.containsKey(selectedProfile)) {\n"
+              "                selectedProfile = LauncherProfiles.mainProfileJson.profiles.keySet().iterator().next();\n"
+              "                LauncherPreferences.DEFAULT_PREF.edit().putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, selectedProfile).apply();\n"
+              "            }\n"
+              "            MinecraftProfile profile = LauncherProfiles.mainProfileJson.profiles.get(selectedProfile);\n"
+              "            if (profile == null) {\n"
+              "                Toast.makeText(this, \"Não foi possível selecionar o perfil do Minecraft.\", Toast.LENGTH_LONG).show();\n"
+              "                mikaelRequestedVersion = null;\n"
+              "                getIntent().removeExtra(\"" + extra + "\");\n"
+              "                return;\n"
+              "            }\n"
+              "            profile.lastVersionId = mikaelRequestedVersion;\n"
+              "            LauncherProfiles.mainProfileJson.profiles.put(selectedProfile, profile);\n"
+              "            try {\n"
+              "                LauncherProfiles.write();\n"
+              "            } catch (IOException exception) {\n"
+              "                Toast.makeText(this, \"Não foi possível salvar a versão escolhida.\", Toast.LENGTH_LONG).show();\n"
+              "                mikaelRequestedVersion = null;\n"
+              "                getIntent().removeExtra(\"" + extra + "\");\n"
+              "                return;\n"
+              "            }\n"
+              "            mikaelRequestedVersion = null;\n"
+              "            getIntent().removeExtra(\"" + extra + "\");\n"
+              "            ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true);\n"
+              "        }, 900);\n"
+              "    }\n\n"
+              + method_anchor
+          )
+          if text.count(method_anchor) != 1:
+              raise SystemExit("Expected exactly one LauncherActivity lifecycle insertion point")
+          text = text.replace(method_anchor, method, 1)
+          launcher.write_text(text)
+          PY
+
       - name: Validate integrated Java source without packaging APK
         if: inputs.mode == 'validate'
         working-directory: upstream/Amethyst-Android
