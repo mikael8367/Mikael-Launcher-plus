@@ -179,9 +179,9 @@ public final class VanillaAssetInstaller {
             }
 
             Iterator<String> keys = objects.keys();
-            while (keys.hasMoreElements()) {
+            while (keys.hasNext()) {
                 checkCancelled(listener);
-                String logicalPath = keys.nextElement();
+                String logicalPath = keys.next();
                 validateLogicalPath(logicalPath);
                 JSONObject record = objects.optJSONObject(logicalPath);
                 if (record == null) throw new IOException("Uma entrada do índice de assets está malformada.");
