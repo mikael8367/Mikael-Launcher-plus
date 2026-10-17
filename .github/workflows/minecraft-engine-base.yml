@@ -1,4 +1,4 @@
-name: Minecraft engine base (Amethyst)
+name: Mikael Launcher Plus engine validation
 
 on:
   # Source changes validate the real engine integration; this never packages an APK.
@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   build-engine-base:
-    name: Build pinned Amethyst Android engine
+    name: Validate Mikael Launcher Plus engine integration
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -319,6 +319,8 @@ jobs:
               "        if (mikaelRequestedVersion != null || mikaelRequestedLoader != null) {\n"
               "            if (mAccountSpinner != null) mAccountSpinner.setVisibility(View.GONE);\n"
               "            if (mSettingsButton != null) mSettingsButton.setVisibility(View.GONE);\n"
+              "            View engineProgress = findViewById(R.id.progress_layout);\n"
+              "            if (engineProgress != null) engineProgress.setVisibility(View.GONE);\n"
               "        }\n"
               "        checkNotificationPermission();"
           )
@@ -955,12 +957,12 @@ jobs:
         run: ./gradlew --no-daemon --stacktrace :app_pojavlauncher:compileDebugJavaWithJavac
 
       - name: Build upstream Android launcher (APK generation explicitly requested)
-        if: github.event_name == 'push' || inputs.mode == 'build'
+        if: inputs.mode == 'build'
         working-directory: upstream/Amethyst-Android
         run: ./gradlew --no-daemon --stacktrace :app_pojavlauncher:assembleDebug
 
       - name: Upload APK and build provenance
-        if: github.event_name == 'push' || inputs.mode == 'build'
+        if: inputs.mode == 'build'
         uses: actions/upload-artifact@v4
         with:
           name: mikael-launcher-plus-engine-test-debug
