@@ -72,6 +72,7 @@ public final class MainActivity extends Activity {
     private InstanceManager instanceManager;
     private InstanceModManager instanceModManager;
     private ModCompatibilityChecker modCompatibilityChecker;
+    private DiagnosticLogManager diagnosticLogManager;
     private VersionArtifactInstaller versionArtifactInstaller;
     private Button stageVanillaButton;
     private TextView installStatusOutput;
@@ -89,6 +90,12 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        try {
+            diagnosticLogManager = new DiagnosticLogManager(this);
+            diagnosticLogManager.installCrashHandler();
+        } catch (Exception ignored) {
+            // Diagnostics are optional and must not block launcher startup.
+        }
         getWindow().setStatusBarColor(BACKGROUND);
         getWindow().setNavigationBarColor(BACKGROUND);
         setContentView(createDashboard());
@@ -428,6 +435,16 @@ public final class MainActivity extends Activity {
         refreshParams.topMargin = dp(10);
         deviceCard.addView(refreshDevice, refreshParams);
         refreshDevice.setOnClickListener(v -> refreshDeviceDiagnostics());
+        Button copyDiagnosticButton = button("COPIAR DIAGNÓSTICO SEGURO", true);
+        LinearLayout.LayoutParams copyDiagnosticParams = params(-1, dp(48));
+        copyDiagnosticParams.topMargin = dp(8);
+        deviceCard.addView(copyDiagnosticButton, copyDiagnosticParams);
+        copyDiagnosticButton.setOnClickListener(v -> copySafeDiagnosticReport());
+        Button viewCrashButton = button("VER ÚLTIMA FALHA", false);
+        LinearLayout.LayoutParams viewCrashParams = params(-1, dp(48));
+        viewCrashParams.topMargin = dp(8);
+        deviceCard.addView(viewCrashButton, viewCrashParams);
+        viewCrashButton.setOnClickListener(v -> showLastCrashLog());
         refreshDeviceDiagnostics();
 
         LinearLayout settingsCard = new LinearLayout(this);
@@ -738,6 +755,58 @@ public final class MainActivity extends Activity {
                 + "\\nRAM disponível neste momento: " + availableMb + " MB"
                 + "\\nHeap máxima do app: " + (Runtime.getRuntime().maxMemory() / (1024L * 1024L)) + " MB"
                 + "\\nDiagnóstico informativo; não altera nem reserva RAM para o Minecraft.");
+    }
+
+    private void copySafeDiagnosticReport() {
+        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
+        if (manager != null) manager.getMemoryInfo(info);
+        long availableMb = info.availMem / (1024L * 1024L);
+        long totalMb = info.totalMem / (1024L * 1024L);
+        SharedPreferences preferences = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
+        int ramMb = preferences.getInt("preferred_ram_mb", 1024);
+        String renderer = preferences.getString("preferred_renderer", "GL4ES (recomendado para compatibilidade)");
+        String report = diagnosticLogManager == null
+                ? "Diagnóstico de falhas indisponível.\nDispositivo: " + Build.MANUFACTURER + " " + Build.MODEL
+                : diagnosticLogManager.createSafeDiagnosticReport(
+                        Build.MANUFACTURER + " " + Build.MODEL, totalMb, availableMb,
+                        ramMb, renderer, "0.1.0");
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico seguro Mikael Launcher Plus", report));
+            Toast.makeText(this, "Diagnóstico copiado. Revise antes de compartilhar.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showLastCrashLog() {
+        if (diagnosticLogManager == null) {
+            new AlertDialog.Builder(this).setTitle("Diagnóstico indisponível")
+                    .setMessage("O armazenamento de logs não pôde ser inicializado.")
+                    .setPositiveButton("OK", null).show();
+            return;
+        }
+        try {
+            String report = diagnosticLogManager.readLastCrash();
+            ScrollView scroll = new ScrollView(this);
+            TextView content = text(report, 13, TEXT, false);
+            content.setTextIsSelectable(true);
+            content.setPadding(dp(12), dp(12), dp(12), dp(12));
+            scroll.addView(content);
+            new AlertDialog.Builder(this).setTitle("Última falha registrada")
+                    .setView(scroll)
+                    .setPositiveButton("Copiar", (dialog, which) -> {
+                        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (clipboard != null) {
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Log de falha", report));
+                            Toast.makeText(this, "Log copiado; revise antes de compartilhar.", Toast.LENGTH_LONG).show();
+                        }
+                    })
+                    .setNegativeButton("Fechar", null).show();
+        } catch (Exception exception) {
+            new AlertDialog.Builder(this).setTitle("Erro ao ler log")
+                    .setMessage("Não foi possível ler o log de falha salvo.")
+                    .setPositiveButton("OK", null).show();
+        }
     }
 
     private void createLocalInstance() {
