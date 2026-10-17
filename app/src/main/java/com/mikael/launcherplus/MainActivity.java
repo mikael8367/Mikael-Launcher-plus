@@ -11,6 +11,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import android.content.SharedPreferences;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,6 +27,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class MainActivity extends Activity {
     private static final int BACKGROUND = 0xFF080D0B;
@@ -39,6 +44,10 @@ public final class MainActivity extends Activity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private TextView versionsOutput;
     private Button versionsButton;
+    private Button metadataButton;
+    private Spinner versionSpinner;
+    private final List<String> releaseIds = new ArrayList<>();
+    private final List<String> releaseUrls = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -131,6 +140,17 @@ public final class MainActivity extends Activity {
         versionsCard.addView(versionsButton, versionsButtonParams);
         versionsButton.setOnClickListener(v -> loadOfficialVersions());
 
+        versionSpinner = new Spinner(this);
+        LinearLayout.LayoutParams spinnerParams = params(-1, dp(50));
+        spinnerParams.topMargin = dp(12);
+        versionsCard.addView(versionSpinner, spinnerParams);
+
+        metadataButton = button("VER METADADOS DA VERSÃO", true);
+        LinearLayout.LayoutParams metadataParams = params(-1, dp(50));
+        metadataParams.topMargin = dp(8);
+        versionsCard.addView(metadataButton, metadataParams);
+        metadataButton.setOnClickListener(v -> loadSelectedVersionMetadata());
+
         TextView sections = text("MÓDULOS DO PROJETO", 12, EMERALD, true);
         LinearLayout.LayoutParams sectionParams = params(-1, -2);
         sectionParams.topMargin = dp(28);
@@ -197,18 +217,21 @@ public final class MainActivity extends Activity {
                 StringBuilder display = new StringBuilder();
                 display.append("Última release estável: ").append(latestRelease).append('\n');
                 display.append("Versões publicadas no manifesto: ").append(versions.length()).append('\n');
-                display.append("\nReleases recentes:\n");
+                display.append("Lista de releases carregada. Selecione uma versão para ver os metadados.");
 
-                int shown = 0;
-                for (int i = 0; i < versions.length() && shown < 12; i++) {
+                List<String> foundIds = new ArrayList<>();
+                List<String> foundUrls = new ArrayList<>();
+                for (int i = 0; i < versions.length(); i++) {
                     JSONObject version = versions.getJSONObject(i);
-                    if (!"release".equals(version.optString("type"))) {
-                        continue;
-                    }
-                    display.append("• ").append(version.optString("id", "desconhecida"));
-                    display.append("  ·  ").append(version.optString("releaseTime", "").replace('T', ' '));
-                    display.append('\n');
-                    shown++;
+                    if (!"release".equals(version.optString("type"))) continue;
+                    foundIds.add(version.optString("id", ""));
+                    foundUrls.add(version.optString("url", ""));
+                }
+                synchronized (releaseIds) {
+                    releaseIds.clear();
+                    releaseIds.addAll(foundIds);
+                    releaseUrls.clear();
+                    releaseUrls.addAll(foundUrls);
                 }
                 result = display.toString();
             } catch (Exception exception) {
@@ -228,8 +251,102 @@ public final class MainActivity extends Activity {
                     return;
                 }
                 versionsOutput.setText(displayResult);
+                List<String> ids;
+                synchronized (releaseIds) { ids = new ArrayList<>(releaseIds); }
+                if (!ids.isEmpty()) {
+                    ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                            android.R.layout.simple_spinner_item, ids);
+                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    versionSpinner.setAdapter(adapter);
+                    SharedPreferences prefs = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
+                    String saved = prefs.getString("selected_version", latestVersionFromDisplay(displayResult));
+                    int selected = ids.indexOf(saved);
+                    versionSpinner.setSelection(selected >= 0 ? selected : 0);
+                }
                 versionsButton.setEnabled(true);
                 versionsButton.setText("ATUALIZAR VERSÕES");
+            });
+        });
+    }
+
+
+    private String latestVersionFromDisplay(String text) {
+        String prefix = "Última release estável: ";
+        for (String line : text.split("\\n")) {
+            if (line.startsWith(prefix)) return line.substring(prefix.length()).trim();
+        }
+        return "";
+    }
+
+    private void loadSelectedVersionMetadata() {
+        if (versionSpinner == null || versionSpinner.getSelectedItem() == null) {
+            Toast.makeText(this, "Consulte as versões primeiro.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String selected = String.valueOf(versionSpinner.getSelectedItem());
+        int index;
+        synchronized (releaseIds) { index = releaseIds.indexOf(selected); }
+        if (index < 0) return;
+        final String metadataUrl;
+        synchronized (releaseIds) {
+            if (index >= releaseUrls.size()) return;
+            metadataUrl = releaseUrls.get(index);
+        }
+        getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
+                .putString("selected_version", selected).apply();
+        metadataButton.setEnabled(false);
+        metadataButton.setText("CARREGANDO METADADOS...");
+        ioExecutor.execute(() -> {
+            HttpURLConnection connection = null;
+            String result;
+            try {
+                if (!metadataUrl.startsWith("https://piston-meta.mojang.com/")) {
+                    throw new IllegalStateException("URL de metadados fora do domínio oficial esperado.");
+                }
+                connection = (HttpURLConnection) new URL(metadataUrl).openConnection();
+                connection.setConnectTimeout(12000);
+                connection.setReadTimeout(12000);
+                connection.setRequestProperty("Accept", "application/json");
+                int status = connection.getResponseCode();
+                if (status != HttpURLConnection.HTTP_OK) {
+                    throw new IllegalStateException("O servidor respondeu HTTP " + status + ".");
+                }
+                String body;
+                try (InputStream input = connection.getInputStream();
+                     ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[8192];
+                    int total = 0, count;
+                    while ((count = input.read(buffer)) != -1) {
+                        total += count;
+                        if (total > MAX_MANIFEST_BYTES) throw new IllegalStateException("Metadados excederam o limite.");
+                        output.write(buffer, 0, count);
+                    }
+                    body = output.toString(StandardCharsets.UTF_8.name());
+                }
+                JSONObject version = new JSONObject(body);
+                JSONObject downloads = version.optJSONObject("downloads");
+                JSONObject client = downloads == null ? null : downloads.optJSONObject("client");
+                JSONObject javaVersion = version.optJSONObject("javaVersion");
+                result = "Versão: " + version.optString("id", selected)
+                        + "\\nTipo: " + version.optString("type", "não informado")
+                        + "\\nData: " + version.optString("releaseTime", "não informada")
+                        + "\\nJava requerida: " + (javaVersion == null ? "não informada" : javaVersion.optString("majorVersion", "não informada"))
+                        + "\\nArquivo client: " + (client == null ? "não disponível" : client.optString("url", "não disponível"))
+                        + "\\nSHA-1: " + (client == null ? "não disponível" : client.optString("sha1", "não disponível"))
+                        + "\\n\nOs metadados foram consultados. O download/lançamento do jogo ainda não está implementado.";
+            } catch (Exception exception) {
+                String message = exception.getMessage();
+                result = "Não foi possível obter os metadados da versão.\\n"
+                        + (message == null ? exception.getClass().getSimpleName() : message);
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+            final String displayResult = result;
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed() || versionsOutput == null || metadataButton == null) return;
+                versionsOutput.setText(displayResult);
+                metadataButton.setEnabled(true);
+                metadataButton.setText("VER METADADOS DA VERSÃO");
             });
         });
     }
