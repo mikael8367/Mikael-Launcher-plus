@@ -35,10 +35,20 @@ O trabalho é feito por etapas. Uma etapa só é considerada concluída quando e
 
 ## Etapa 3 — Instalação real por instância
 
-- [ ] Conectar perfis Mikael às pastas de jogo realmente usadas pelo motor.
-- [ ] Instalar bibliotecas e arquivos oficiais com verificação de tamanho/hash.
-- [ ] Persistir progresso, erros e capacidade de retomar downloads.
-- [ ] Não marcar perfis como instalados antes de verificar os arquivos.
+**Estado: implementação parcial adicionada; compilação e teste ainda pendentes.**
+
+- [x] Adicionar instalador de artefatos oficiais Vanilla por instância.
+- [x] Baixar metadados oficiais e JAR do cliente, com validação do identificador, tamanho e SHA-1.
+- [x] Usar arquivos temporários e descartar downloads incompletos.
+- [x] Guardar o estado `client_artifacts_staged` sem marcar o jogo como instalado/jogável.
+- [x] Documentar limites e próximos passos em [INSTANCE-INSTALLATION.md](INSTANCE-INSTALLATION.md).
+- [ ] Validar compilação Java no GitHub Actions sem gerar APK.
+- [ ] Conectar cada instância ao diretório de jogo realmente usado pelo motor.
+- [ ] Baixar e verificar bibliotecas, assets e runtime Java.
+- [ ] Implementar progresso/cancelamento e retomar downloads com segurança.
+- [ ] Testar no motor em aparelho físico e só então marcar instalação completa.
+
+**Critério de conclusão:** o motor inicia a versão da instância selecionada, com todos os arquivos necessários verificados. Baixar apenas o JAR do cliente não conclui a instalação.
 
 ## Etapa 4 — Loaders e mods
 
