@@ -132,6 +132,60 @@ public final class InstanceManager {
         }
     }
 
+    /**
+     * Records verified Mojang client artifacts without claiming the instance is playable.
+     * The game engine is not yet configured to use this directory.
+     */
+    public synchronized void updateArtifactStatus(String name, JSONObject artifact)
+            throws IOException, JSONException {
+        String safeName = validateName(name);
+        if (artifact == null || !"client_artifacts_staged".equals(artifact.optString("status", ""))) {
+            throw new IllegalArgumentException("Estado dos arquivos oficiais inválido.");
+        }
+        JSONArray instances = getInstances();
+        JSONObject matched = null;
+        for (int i = 0; i < instances.length(); i++) {
+            JSONObject record = instances.getJSONObject(i);
+            if (safeName.equals(record.optString("name", ""))) {
+                matched = record;
+                record.put("installStatus", "client_artifacts_staged");
+                record.put("gameInstalled", false);
+                record.put("loaderInstalled", false);
+                record.put("stagedVersion", artifact.optString("versionId", ""));
+                record.put("clientSha1", artifact.optString("clientSha1", ""));
+                record.put("metadataSha1", artifact.optString("metadataSha1", ""));
+                record.put("clientBytes", artifact.optLong("clientBytes", 0L));
+                record.put("stagedRelativePath", artifact.optString("relativePath", ""));
+                record.put("artifactsStagedAt", System.currentTimeMillis());
+                break;
+            }
+        }
+        if (matched == null) throw new IllegalArgumentException("A instância selecionada não existe mais.");
+        JSONObject profile = new JSONObject();
+        File profileFile = new File(getInstanceDirectory(safeName), "instance.json");
+        try (FileInputStream input = new FileInputStream(profileFile);
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+                if (output.size() > 256 * 1024) throw new IOException("Os metadados da instância excedem o limite.");
+            }
+            profile = new JSONObject(new String(output.toByteArray(), StandardCharsets.UTF_8));
+        }
+        profile.put("installStatus", "client_artifacts_staged");
+        profile.put("gameInstalled", false);
+        profile.put("loaderInstalled", false);
+        profile.put("stagedVersion", artifact.optString("versionId", ""));
+        profile.put("clientSha1", artifact.optString("clientSha1", ""));
+        profile.put("metadataSha1", artifact.optString("metadataSha1", ""));
+        profile.put("clientBytes", artifact.optLong("clientBytes", 0L));
+        profile.put("stagedRelativePath", artifact.optString("relativePath", ""));
+        profile.put("artifactsStagedAt", System.currentTimeMillis());
+        writeJsonAtomically(profileFile, profile);
+        writeJsonAtomically(indexFile, instances);
+    }
+
     public synchronized boolean deleteInstance(String name) throws IOException, JSONException {
         String safeName = validateName(name);
         JSONArray current = getInstances();
