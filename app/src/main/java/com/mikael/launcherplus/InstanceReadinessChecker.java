@@ -80,13 +80,24 @@ public final class InstanceReadinessChecker {
                 JSONObject metadata = readJsonObject(metadataFile, MAX_METADATA_BYTES);
                 String actualMetadataSha1 = sha1(metadataFile);
                 String recordedMetadataSha1 = profile.optString("metadataSha1", "").toLowerCase(Locale.ROOT);
+                String recordedClientSha1 = profile.optString("clientSha1", "").toLowerCase(Locale.ROOT);
+                long recordedClientBytes = profile.optLong("clientBytes", -1L);
+                JSONObject downloads = metadata.optJSONObject("downloads");
+                JSONObject manifestClient = downloads == null ? null : downloads.optJSONObject("client");
+                String manifestClientSha1 = manifestClient == null ? "" :
+                        manifestClient.optString("sha1", "").toLowerCase(Locale.ROOT);
+                long manifestClientBytes = manifestClient == null ? -1L :
+                        manifestClient.optLong("size", -1L);
                 boolean idMatches = stagedVersion.equals(metadata.optString("id", ""));
-                boolean hashMatches = recordedMetadataSha1.matches("[0-9a-f]{40}")
+                boolean metadataHashMatches = recordedMetadataSha1.matches("[0-9a-f]{40}")
                         && recordedMetadataSha1.equals(actualMetadataSha1);
-                metadataValid = idMatches && hashMatches;
+                boolean manifestClientMatchesRecord = manifestClientSha1.matches("[0-9a-f]{40}")
+                        && manifestClientSha1.equals(recordedClientSha1)
+                        && manifestClientBytes > 0 && manifestClientBytes == recordedClientBytes;
+                metadataValid = idMatches && metadataHashMatches && manifestClientMatchesRecord;
                 addCheck(checks, "Identificador e SHA-1 do JSON", metadataValid,
-                        metadataValid ? "O identificador e o SHA-1 correspondem ao registro da instância."
-                                : "O identificador do JSON ou seu SHA-1 não corresponde ao registro.");
+                        metadataValid ? "ID, SHA-1 do JSON e tamanho/hash esperados do cliente correspondem ao registro."
+                                : "O ID, o SHA-1 do JSON ou o hash/tamanho do cliente declarado no manifesto diverge do registro.");
                 if (!metadataValid) blockers.put("Os metadados da versão estão inconsistentes; baixe novamente os arquivos oficiais.");
             } else {
                 addCheck(checks, "Identificador e SHA-1 do JSON", false,
