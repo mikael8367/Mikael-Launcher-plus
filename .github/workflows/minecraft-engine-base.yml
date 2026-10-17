@@ -273,6 +273,20 @@ jobs:
               raise SystemExit("Expected exactly one LauncherActivity onResume")
           text = text.replace(resume, resume_replacement, 1)
 
+          # Remove Amethyst's account/settings header while its embedded engine is handling a Mikael request.
+          bind_anchor = "        bindViews();\\n        checkNotificationPermission();"
+          bind_replacement = (
+              "        bindViews();\\n"
+              "        if (mikaelRequestedVersion != null || mikaelRequestedLoader != null) {\\n"
+              "            if (mAccountSpinner != null) mAccountSpinner.setVisibility(View.GONE);\\n"
+              "            if (mSettingsButton != null) mSettingsButton.setVisibility(View.GONE);\\n"
+              "        }\\n"
+              "        checkNotificationPermission();"
+          )
+          if text.count(bind_anchor) != 1:
+              raise SystemExit("Expected exactly one launcher view binding point")
+          text = text.replace(bind_anchor, bind_replacement, 1)
+
           method_anchor = "    @Override\n    protected void onResume() {"
           method = (
               "    private void maybeLaunchMikaelRequestedVersion() {\n"
