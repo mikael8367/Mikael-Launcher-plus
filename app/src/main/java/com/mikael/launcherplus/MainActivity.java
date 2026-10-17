@@ -398,20 +398,15 @@ public final class MainActivity extends Activity {
         instanceNameParams.topMargin = dp(12);
         instancesCard.addView(instanceNameInput, instanceNameParams);
 
-        TextView loaderLabel = text("Perfil do carregador", 14, TEXT, true);
-        LinearLayout.LayoutParams loaderLabelParams = params(-1, -2);
-        loaderLabelParams.topMargin = dp(10);
-        instancesCard.addView(loaderLabel, loaderLabelParams);
-        loaderSpinner = new Spinner(this);
-        String[] loaderOptions = {"Vanilla", "Forge", "Fabric", "OptiFine", "Forge + OptiFine"};
-        ArrayAdapter<String> loaderAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, loaderOptions);
-        loaderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        loaderSpinner.setAdapter(loaderAdapter);
-        LinearLayout.LayoutParams loaderSpinnerParams = params(-1, dp(48));
-        instancesCard.addView(loaderSpinner, loaderSpinnerParams);
+        TextView creationFlowNote = text(
+                "O assistente vai pedir primeiro a versão do Minecraft e depois o modloader. "
+                        + "No motor integrado, o instalador nativo baixa os componentes necessários.",
+                13, MUTED, false);
+        LinearLayout.LayoutParams creationFlowNoteParams = params(-1, -2);
+        creationFlowNoteParams.topMargin = dp(10);
+        instancesCard.addView(creationFlowNote, creationFlowNoteParams);
 
-        Button createInstanceButton = primaryButton("CRIAR INSTÂNCIA", true);
+        Button createInstanceButton = primaryButton("CRIAR VERSÃO E BAIXAR", true);
         LinearLayout.LayoutParams createInstanceParams = params(-1, dp(50));
         createInstanceParams.topMargin = dp(10);
         instancesCard.addView(createInstanceButton, createInstanceParams);
@@ -1050,27 +1045,120 @@ public final class MainActivity extends Activity {
     }
 
     private void createLocalInstance() {
-        if (instanceManager == null || instanceNameInput == null || loaderSpinner == null) {
-            Toast.makeText(this, "O gerenciador de instâncias não está disponível.", Toast.LENGTH_LONG).show();
+        if (instanceManager == null || instanceNameInput == null || versionSpinner == null) {
+            Toast.makeText(this, "O gerenciador de versões não está disponível.", Toast.LENGTH_LONG).show();
             return;
         }
-        String version = versionSpinner != null && versionSpinner.getSelectedItem() != null
-                ? String.valueOf(versionSpinner.getSelectedItem())
-                : getSharedPreferences("launcher_preferences", MODE_PRIVATE).getString("selected_version", "");
-        if (version == null || version.trim().isEmpty()) {
-            Toast.makeText(this, "Consulte as versões oficiais e selecione uma versão antes de criar a instância.", Toast.LENGTH_LONG).show();
+
+        String name = instanceNameInput.getText().toString().trim();
+        if (name.isEmpty()) {
+            instanceNameInput.setError("Digite um nome para a versão");
+            instanceNameInput.requestFocus();
+            Toast.makeText(this, "Digite o nome da versão antes de continuar.", Toast.LENGTH_LONG).show();
             return;
         }
-        String name = instanceNameInput.getText().toString();
-        String loader = loaderSpinner.getSelectedItem() == null
-                ? "Vanilla" : String.valueOf(loaderSpinner.getSelectedItem());
+
+        List<String> availableVersions = new ArrayList<>();
+        android.widget.SpinnerAdapter currentAdapter = versionSpinner.getAdapter();
+        if (currentAdapter != null) {
+            for (int i = 0; i < currentAdapter.getCount(); i++) {
+                Object value = currentAdapter.getItem(i);
+                if (value != null) availableVersions.add(String.valueOf(value));
+            }
+        }
+        if (availableVersions.isEmpty()) {
+            Toast.makeText(this, "Abra a aba Versões, consulte o manifesto oficial e tente novamente.", Toast.LENGTH_LONG).show();
+            showDashboardTab((LinearLayout) versionSpinner.getParent().getParent().getParent(), "versoes");
+            return;
+        }
+
+        Spinner versionChoice = new Spinner(this);
+        ArrayAdapter<String> versionChoiceAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, availableVersions);
+        versionChoiceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        versionChoice.setAdapter(versionChoiceAdapter);
+        Object currentlySelected = versionSpinner.getSelectedItem();
+        int defaultIndex = availableVersions.indexOf(currentlySelected == null ? "" : String.valueOf(currentlySelected));
+        if (defaultIndex >= 0) versionChoice.setSelection(defaultIndex);
+
+        LinearLayout versionDialogContent = new LinearLayout(this);
+        versionDialogContent.setOrientation(LinearLayout.VERTICAL);
+        versionDialogContent.setPadding(dp(20), dp(8), dp(20), dp(8));
+        versionDialogContent.addView(text("ETAPA 1 DE 2", 11, EMERALD, true));
+        versionDialogContent.addView(text("Escolha primeiro a versão exata do Minecraft.", 14, MUTED, false));
+        versionDialogContent.addView(versionChoice, params(-1, dp(52)));
+
+        new AlertDialog.Builder(this)
+                .setTitle("Criar versão — Minecraft")
+                .setView(versionDialogContent)
+                .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("PRÓXIMO", (dialog, which) -> {
+                    Object chosen = versionChoice.getSelectedItem();
+                    if (chosen == null) {
+                        Toast.makeText(this, "Selecione uma versão válida.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    showLoaderChoiceDialog(name, String.valueOf(chosen));
+                })
+                .show();
+    }
+
+    private void showLoaderChoiceDialog(String name, String version) {
+        String[] loaderOptions = {"Vanilla", "Forge", "Fabric", "OptiFine", "Forge + OptiFine"};
+        Spinner loaderChoice = new Spinner(this);
+        ArrayAdapter<String> loaderChoiceAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, loaderOptions);
+        loaderChoiceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        loaderChoice.setAdapter(loaderChoiceAdapter);
+
+        LinearLayout loaderDialogContent = new LinearLayout(this);
+        loaderDialogContent.setOrientation(LinearLayout.VERTICAL);
+        loaderDialogContent.setPadding(dp(20), dp(8), dp(20), dp(8));
+        loaderDialogContent.addView(text("ETAPA 2 DE 2", 11, EMERALD, true));
+        loaderDialogContent.addView(text("Minecraft " + version + "\\nAgora escolha o modloader.", 14, MUTED, false));
+        loaderDialogContent.addView(loaderChoice, params(-1, dp(52)));
+
+        new AlertDialog.Builder(this)
+                .setTitle("Escolha o modloader")
+                .setView(loaderDialogContent)
+                .setNegativeButton("VOLTAR", (dialog, which) -> {
+                    dialog.dismiss();
+                    createLocalInstance();
+                })
+                .setPositiveButton("CRIAR E BAIXAR", (dialog, which) ->
+                        createAndInstallVersion(name, version, String.valueOf(loaderChoice.getSelectedItem())))
+                .show();
+    }
+
+    private void createAndInstallVersion(String name, String version, String loader) {
         try {
             JSONObject created = instanceManager.createInstance(name, version, loader);
             getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
-                    .putString("active_instance_name", created.getString("name")).apply();
+                    .putString("active_instance_name", created.getString("name"))
+                    .putString("selected_version", version).apply();
             instanceNameInput.setText("");
             refreshInstancesList();
-            Toast.makeText(this, "Perfil local criado. O jogo e o carregador ainda não foram instalados.", Toast.LENGTH_LONG).show();
+
+            boolean opened = MinecraftEngineBridge.openVersionInstaller(this, version, loader);
+            if (opened) {
+                String message = "Versão " + version + " • " + loader
+                        + "\\nO instalador do motor foi aberto. Conclua as etapas exibidas para baixar os componentes.";
+                if (installStatusOutput != null) installStatusOutput.setText(message);
+                Toast.makeText(this, loader.equals("Vanilla")
+                        ? "Preparando o Minecraft " + version + " no motor."
+                        : "Abrindo o instalador nativo de " + loader + " para Minecraft " + version + ".",
+                        Toast.LENGTH_LONG).show();
+            } else {
+                String message = "O perfil local foi criado, mas a instalação real não foi iniciada. "
+                        + "É necessário usar a versão do Mikael Launcher Plus integrada ao motor Amethyst; "
+                        + "a interface isolada não instala modloaders.";
+                if (installStatusOutput != null) installStatusOutput.setText(message);
+                new AlertDialog.Builder(this)
+                        .setTitle("Motor integrado necessário")
+                        .setMessage(message)
+                        .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                        .show();
+            }
         } catch (Exception exception) {
             Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
         }
