@@ -217,6 +217,7 @@ jobs:
           root = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch")
           extra = "com.mikael.launcherplus.extra.REQUESTED_VERSION"
           loader_extra = "com.mikael.launcherplus.extra.REQUESTED_LOADER"
+          offline_extra = "com.mikael.launcherplus.extra.REQUESTED_OFFLINE_USERNAME"
 
           bootstrap = root / "TestStorageActivity.java"
           text = bootstrap.read_text()
@@ -226,6 +227,10 @@ jobs:
               "        String requestedVersion = getIntent().getStringExtra(\"" + extra + "\");\n"
               "        if (requestedVersion != null && requestedVersion.matches(\"[A-Za-z0-9._-]{1,100}\")) {\n"
               "            intent.putExtra(\"" + extra + "\", requestedVersion);\n"
+              "        }\n"
+              "        String offlineUsername = getIntent().getStringExtra(\"" + offline_extra + "\");\n"
+              "        if (offlineUsername != null && offlineUsername.matches(\"[A-Za-z0-9_]{3,16}\")) {\n"
+              "            intent.putExtra(\"" + offline_extra + "\", offlineUsername);\n"
               "        }\n"
               "        String requestedLoader = getIntent().getStringExtra(\"" + loader_extra + "\");\n"
               "        if (\"Vanilla\".equals(requestedLoader) || \"Forge\".equals(requestedLoader) || \"Fabric\".equals(requestedLoader) || \"Quilt\".equals(requestedLoader) || \"NeoForge\".equals(requestedLoader) || \"OptiFine\".equals(requestedLoader) || \"Forge + OptiFine\".equals(requestedLoader)) {\n"
@@ -247,6 +252,7 @@ jobs:
           fields = (
               "    private String mikaelRequestedVersion;\n"
               "    private String mikaelRequestedLoader;\n"
+              "    private String mikaelRequestedOfflineUsername;\n"
               "    private boolean mikaelLaunchScheduled;\n"
               "    private int mikaelLaunchAttempts;\n"
               "    private boolean mikaelLoaderNavigationScheduled;\n"
@@ -267,6 +273,7 @@ jobs:
               "        super.onCreate(savedInstanceState);\n"
               "        mikaelRequestedVersion = getIntent().getStringExtra(\"" + extra + "\");\n"
               "        mikaelRequestedLoader = getIntent().getStringExtra(\"" + loader_extra + "\");\n"
+              "        mikaelRequestedOfflineUsername = getIntent().getStringExtra(\"" + offline_extra + "\");\n"
               "        setContentView(R.layout.activity_pojav_launcher);"
           )
           if text.count(on_create) != 1:
@@ -377,6 +384,11 @@ jobs:
               "                mikaelRequestedVersion = null;\n"
               "                getIntent().removeExtra(\"" + extra + "\");\n"
               "                return;\n"
+              "            }\n"
+              "            if (mikaelRequestedOfflineUsername != null && mikaelRequestedOfflineUsername.matches(\"[A-Za-z0-9_]{3,16}\")) {\n"
+              "                ExtraCore.setValue(ExtraConstants.MOJANG_LOGIN_TODO, new String[]{mikaelRequestedOfflineUsername, \"\"});\n"
+              "                mikaelRequestedOfflineUsername = null;\n"
+              "                getIntent().removeExtra(\"" + offline_extra + "\");\n"
               "            }\n"
               "            profile.lastVersionId = mikaelRequestedVersion;\n"
               "            LauncherProfiles.mainProfileJson.profiles.put(selectedProfile, profile);\n"
