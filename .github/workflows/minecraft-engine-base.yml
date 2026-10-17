@@ -225,29 +225,29 @@ jobs:
 
           # Replace the Amethyst home fragment with an empty engine host for Mikael UI requests.
           menu_lines = [
-              "        if(fragmentManager.getBackStackEntryCount() < 1) {",
-              "            // Manually add the first fragment to the backstack to get easily back to it",
-              "            // There must be a better way to handle the root though...",
-              "            // (artDev: No, there is not. I've spent days researching this for another unrelated project.)",
-              "            fragmentManager.beginTransaction()",
-              "                    .setReorderingAllowed(true)",
-              "                    .addToBackStack(\\"ROOT\\")",
-              "                    .add(R.id.container_fragment, MainMenuFragment.class, null, \\"ROOT\\").commit();",
-              "        }",
+              '        if(fragmentManager.getBackStackEntryCount() < 1) {',
+              '            // Manually add the first fragment to the backstack to get easily back to it',
+              '            // There must be a better way to handle the root though...',
+              '            // (artDev: No, there is not. I\'ve spent days researching this for another unrelated project.)',
+              '            fragmentManager.beginTransaction()',
+              '                    .setReorderingAllowed(true)',
+              '                    .addToBackStack("ROOT")',
+              '                    .add(R.id.container_fragment, MainMenuFragment.class, null, "ROOT").commit();',
+              '        }',
           ]
-          menu_block = "\\n".join(menu_lines)
+          menu_block = "\n".join(menu_lines)
           engine_lines = [
-              "        if (fragmentManager.getBackStackEntryCount() < 1) {",
-              "            fragmentManager.beginTransaction()",
-              "                    .setReorderingAllowed(true)",
-              "                    .addToBackStack(\\"ROOT\\")",
-              "                    .add(R.id.container_fragment,",
-              "                            (mikaelRequestedVersion != null || mikaelRequestedLoader != null)",
-              "                                    ? Fragment.class : MainMenuFragment.class,",
-              "                            null, \\"ROOT\\").commit();",
-              "        }",
+              '        if (fragmentManager.getBackStackEntryCount() < 1) {',
+              '            fragmentManager.beginTransaction()',
+              '                    .setReorderingAllowed(true)',
+              '                    .addToBackStack("ROOT")',
+              '                    .add(R.id.container_fragment,',
+              '                            (mikaelRequestedVersion != null || mikaelRequestedLoader != null)',
+              '                                    ? Fragment.class : MainMenuFragment.class,',
+              '                            null, "ROOT").commit();',
+              '        }',
           ]
-          engine_block = "\\n".join(engine_lines)
+          engine_block = "\n".join(engine_lines)
           if text.count(menu_block) != 1:
               raise SystemExit("Expected exactly one native launcher main-menu fragment block")
           text = text.replace(menu_block, engine_block, 1)
@@ -274,13 +274,13 @@ jobs:
           text = text.replace(resume, resume_replacement, 1)
 
           # Remove Amethyst's account/settings header while its embedded engine is handling a Mikael request.
-          bind_anchor = "        bindViews();\\n        checkNotificationPermission();"
+          bind_anchor = "        bindViews();\n        checkNotificationPermission();"
           bind_replacement = (
-              "        bindViews();\\n"
-              "        if (mikaelRequestedVersion != null || mikaelRequestedLoader != null) {\\n"
-              "            if (mAccountSpinner != null) mAccountSpinner.setVisibility(View.GONE);\\n"
-              "            if (mSettingsButton != null) mSettingsButton.setVisibility(View.GONE);\\n"
-              "        }\\n"
+              "        bindViews();\n"
+              "        if (mikaelRequestedVersion != null || mikaelRequestedLoader != null) {\n"
+              "            if (mAccountSpinner != null) mAccountSpinner.setVisibility(View.GONE);\n"
+              "            if (mSettingsButton != null) mSettingsButton.setVisibility(View.GONE);\n"
+              "        }\n"
               "        checkNotificationPermission();"
           )
           if text.count(bind_anchor) != 1:
