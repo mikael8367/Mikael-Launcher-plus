@@ -18,11 +18,15 @@ public final class MinecraftEngineBridge {
             "com.mikael.launcherplus.extra.REQUESTED_LOADER";
     public static final String EXTRA_REQUESTED_PROFILE_NAME =
             "com.mikael.launcherplus.extra.REQUESTED_PROFILE_NAME";
+    public static final String EXTRA_REQUESTED_OFFLINE_USERNAME =
+            "com.mikael.launcherplus.extra.REQUESTED_OFFLINE_USERNAME";
 
     private MinecraftEngineBridge() { }
 
-    public static boolean openInstalledEngine(Activity activity, String requestedVersion) {
-        if (activity == null || !isValidVersion(requestedVersion)) return false;
+    public static boolean openInstalledEngine(Activity activity, String requestedVersion,
+                                               String offlineUsername) {
+        if (activity == null || !isValidVersion(requestedVersion)
+                || !isValidOfflineUsername(offlineUsername)) return false;
 
         String ownPackage = activity.getPackageName();
         if ("org.angelauramc.amethyst.debug".equals(ownPackage)
@@ -31,6 +35,7 @@ public final class MinecraftEngineBridge {
             Intent bootstrap = new Intent();
             bootstrap.setClassName(ownPackage, "net.kdt.pojavlaunch.TestStorageActivity");
             bootstrap.putExtra(EXTRA_REQUESTED_VERSION, requestedVersion);
+            bootstrap.putExtra(EXTRA_REQUESTED_OFFLINE_USERNAME, offlineUsername.trim());
             try {
                 activity.startActivity(bootstrap);
                 return true;
@@ -71,6 +76,10 @@ public final class MinecraftEngineBridge {
         } catch (ActivityNotFoundException | SecurityException ignored) {
             return false;
         }
+    }
+
+    private static boolean isValidOfflineUsername(String value) {
+        return value != null && value.trim().matches("[A-Za-z0-9_]{3,16}");
     }
 
     private static boolean isValidProfileName(String value) {
