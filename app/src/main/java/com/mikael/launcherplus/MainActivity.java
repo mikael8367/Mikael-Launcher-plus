@@ -1,6 +1,7 @@
 package com.mikael.launcherplus;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ActivityManager;
 import android.os.Build;
 import android.content.ClipData;
@@ -59,6 +60,12 @@ public final class MainActivity extends Activity {
     private Spinner typeSpinner;
     private EditText versionSearch;
     private TextView deviceOutput;
+    private EditText instanceNameInput;
+    private Spinner instanceSpinner;
+    private Spinner loaderSpinner;
+    private TextView instancesOutput;
+    private InstanceManager instanceManager;
+    private boolean updatingInstances = false;
     private String lastMetadataText = "";
     private final List<String> allVersionIds = new ArrayList<>();
     private final List<String> allVersionUrls = new ArrayList<>();
@@ -230,6 +237,92 @@ public final class MainActivity extends Activity {
                 "Planejado · autenticação oficial e armazenamento seguro");
         addModule(page, "Desempenho e diagnóstico",
                 "Informações reais do dispositivo e memória disponíveis abaixo.");
+
+        LinearLayout instancesCard = new LinearLayout(this);
+        instancesCard.setOrientation(LinearLayout.VERTICAL);
+        instancesCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        instancesCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        LinearLayout.LayoutParams instancesCardParams = params(-1, -2);
+        instancesCardParams.topMargin = dp(14);
+        page.addView(instancesCard, instancesCardParams);
+        instancesCard.addView(text("INSTÂNCIAS LOCAIS", 12, EMERALD, true));
+        TextView instancesNote = text(
+                "Crie perfis separados com pastas para mods, saves, configurações e logs. "
+                        + "Isso ainda não baixa o jogo nem instala o loader escolhido.",
+                13, MUTED, false);
+        LinearLayout.LayoutParams instancesNoteParams = params(-1, -2);
+        instancesNoteParams.topMargin = dp(8);
+        instancesCard.addView(instancesNote, instancesNoteParams);
+
+        instanceNameInput = new EditText(this);
+        instanceNameInput.setSingleLine(true);
+        instanceNameInput.setTextSize(15);
+        instanceNameInput.setTextColor(TEXT);
+        instanceNameInput.setHintTextColor(MUTED);
+        instanceNameInput.setHint("Nome da instância (ex.: Survival 1.12.2)");
+        instanceNameInput.setPadding(dp(12), 0, dp(12), 0);
+        instanceNameInput.setBackground(roundRect(BACKGROUND, 12, 0xFF355344, 1));
+        LinearLayout.LayoutParams instanceNameParams = params(-1, dp(50));
+        instanceNameParams.topMargin = dp(12);
+        instancesCard.addView(instanceNameInput, instanceNameParams);
+
+        TextView loaderLabel = text("Perfil do carregador", 14, TEXT, true);
+        LinearLayout.LayoutParams loaderLabelParams = params(-1, -2);
+        loaderLabelParams.topMargin = dp(10);
+        instancesCard.addView(loaderLabel, loaderLabelParams);
+        loaderSpinner = new Spinner(this);
+        String[] loaderOptions = {"Vanilla", "Forge", "Fabric", "OptiFine", "Forge + OptiFine"};
+        ArrayAdapter<String> loaderAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, loaderOptions);
+        loaderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        loaderSpinner.setAdapter(loaderAdapter);
+        LinearLayout.LayoutParams loaderSpinnerParams = params(-1, dp(48));
+        instancesCard.addView(loaderSpinner, loaderSpinnerParams);
+
+        Button createInstanceButton = button("CRIAR INSTÂNCIA", true);
+        LinearLayout.LayoutParams createInstanceParams = params(-1, dp(50));
+        createInstanceParams.topMargin = dp(10);
+        instancesCard.addView(createInstanceButton, createInstanceParams);
+        createInstanceButton.setOnClickListener(v -> createLocalInstance());
+
+        TextView existingLabel = text("Instâncias salvas neste aparelho", 14, TEXT, true);
+        LinearLayout.LayoutParams existingLabelParams = params(-1, -2);
+        existingLabelParams.topMargin = dp(14);
+        instancesCard.addView(existingLabel, existingLabelParams);
+        instanceSpinner = new Spinner(this);
+        instanceSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (updatingInstances || position < 0 || position >= instanceSpinner.getCount()) return;
+                Object selected = instanceSpinner.getSelectedItem();
+                if (selected == null) return;
+                getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
+                        .putString("active_instance_name", String.valueOf(selected)).apply();
+                showSelectedInstance();
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+        });
+        LinearLayout.LayoutParams instanceSpinnerParams = params(-1, dp(48));
+        instancesCard.addView(instanceSpinner, instanceSpinnerParams);
+
+        instancesOutput = text("Nenhuma instância criada ainda.", 13, MUTED, false);
+        LinearLayout.LayoutParams instancesOutputParams = params(-1, -2);
+        instancesOutputParams.topMargin = dp(8);
+        instancesCard.addView(instancesOutput, instancesOutputParams);
+
+        Button deleteInstanceButton = button("EXCLUIR INSTÂNCIA SELECIONADA", true);
+        LinearLayout.LayoutParams deleteInstanceParams = params(-1, dp(48));
+        deleteInstanceParams.topMargin = dp(10);
+        instancesCard.addView(deleteInstanceButton, deleteInstanceParams);
+        deleteInstanceButton.setOnClickListener(v -> confirmDeleteSelectedInstance());
+
+        try {
+            instanceManager = new InstanceManager(this);
+            refreshInstancesList();
+        } catch (Exception exception) {
+            instancesOutput.setText("Gerenciador de instâncias indisponível: " + safeExceptionMessage(exception));
+            createInstanceButton.setEnabled(false);
+            deleteInstanceButton.setEnabled(false);
+        }
 
         LinearLayout deviceCard = new LinearLayout(this);
         deviceCard.setOrientation(LinearLayout.VERTICAL);
@@ -558,6 +651,132 @@ public final class MainActivity extends Activity {
                 + "\\nRAM disponível neste momento: " + availableMb + " MB"
                 + "\\nHeap máxima do app: " + (Runtime.getRuntime().maxMemory() / (1024L * 1024L)) + " MB"
                 + "\\nDiagnóstico informativo; não altera nem reserva RAM para o Minecraft.");
+    }
+
+    private void createLocalInstance() {
+        if (instanceManager == null || instanceNameInput == null || loaderSpinner == null) {
+            Toast.makeText(this, "O gerenciador de instâncias não está disponível.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        String version = versionSpinner != null && versionSpinner.getSelectedItem() != null
+                ? String.valueOf(versionSpinner.getSelectedItem())
+                : getSharedPreferences("launcher_preferences", MODE_PRIVATE).getString("selected_version", "");
+        if (version == null || version.trim().isEmpty()) {
+            Toast.makeText(this, "Consulte as versões oficiais e selecione uma versão antes de criar a instância.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        String name = instanceNameInput.getText().toString();
+        String loader = loaderSpinner.getSelectedItem() == null
+                ? "Vanilla" : String.valueOf(loaderSpinner.getSelectedItem());
+        try {
+            JSONObject created = instanceManager.createInstance(name, version, loader);
+            getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
+                    .putString("active_instance_name", created.getString("name")).apply();
+            instanceNameInput.setText("");
+            refreshInstancesList();
+            Toast.makeText(this, "Perfil local criado. O jogo e o carregador ainda não foram instalados.", Toast.LENGTH_LONG).show();
+        } catch (Exception exception) {
+            Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void refreshInstancesList() {
+        if (instanceManager == null || instanceSpinner == null || instancesOutput == null) return;
+        try {
+            JSONArray records = instanceManager.getInstances();
+            List<String> names = new ArrayList<>();
+            for (int i = 0; i < records.length(); i++) {
+                String name = records.getJSONObject(i).optString("name", "").trim();
+                if (!name.isEmpty()) names.add(name);
+            }
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                    android.R.layout.simple_spinner_item, names);
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            SharedPreferences preferences = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
+            String active = preferences.getString("active_instance_name", "");
+            updatingInstances = true;
+            instanceSpinner.setAdapter(adapter);
+            int selected = names.indexOf(active);
+            if (selected < 0 && !names.isEmpty()) selected = 0;
+            if (selected >= 0) {
+                instanceSpinner.setSelection(selected);
+                preferences.edit().putString("active_instance_name", names.get(selected)).apply();
+            } else {
+                preferences.edit().remove("active_instance_name").apply();
+            }
+            updatingInstances = false;
+            showSelectedInstance();
+        } catch (Exception exception) {
+            updatingInstances = false;
+            instancesOutput.setText("Não foi possível ler as instâncias locais: " + safeExceptionMessage(exception));
+        }
+    }
+
+    private void showSelectedInstance() {
+        if (instanceManager == null || instanceSpinner == null || instancesOutput == null) return;
+        try {
+            JSONArray records = instanceManager.getInstances();
+            Object selected = instanceSpinner.getSelectedItem();
+            if (selected == null) {
+                instancesOutput.setText("Instâncias locais: " + records.length()
+                        + "\\nCrie um perfil depois de consultar e selecionar uma versão oficial.");
+                return;
+            }
+            String name = String.valueOf(selected);
+            JSONObject selectedRecord = null;
+            for (int i = 0; i < records.length(); i++) {
+                JSONObject candidate = records.getJSONObject(i);
+                if (name.equals(candidate.optString("name", ""))) {
+                    selectedRecord = candidate;
+                    break;
+                }
+            }
+            if (selectedRecord == null) {
+                instancesOutput.setText("A instância selecionada não está mais no índice local. Atualize a lista.");
+                return;
+            }
+            instancesOutput.setText("Instâncias locais: " + records.length()
+                    + "\\nNome: " + selectedRecord.optString("name", "—")
+                    + "\\nVersão escolhida: " + selectedRecord.optString("version", "—")
+                    + "\\nPerfil de carregador: " + selectedRecord.optString("loader", "Vanilla")
+                    + "\\nPasta privada: " + selectedRecord.optString("relativePath", "instances")
+                    + "\\nEstado: perfil criado; jogo e carregador não instalados.");
+        } catch (Exception exception) {
+            instancesOutput.setText("Erro ao ler os detalhes: " + safeExceptionMessage(exception));
+        }
+    }
+
+    private void confirmDeleteSelectedInstance() {
+        if (instanceSpinner == null || instanceSpinner.getSelectedItem() == null) {
+            Toast.makeText(this, "Não há instância selecionada para excluir.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String name = String.valueOf(instanceSpinner.getSelectedItem());
+        new AlertDialog.Builder(this)
+                .setTitle("Excluir instância?")
+                .setMessage("O perfil local '" + name + "' e seus arquivos serão removidos. Esta ação não pode ser desfeita.")
+                .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Excluir", (dialog, which) -> {
+                    try {
+                        boolean deleted = instanceManager != null && instanceManager.deleteInstance(name);
+                        if (deleted) {
+                            getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
+                                    .remove("active_instance_name").apply();
+                            refreshInstancesList();
+                            Toast.makeText(this, "Instância excluída.", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(this, "A instância não foi encontrada.", Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (Exception exception) {
+                        Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
+                    }
+                }).show();
+    }
+
+    private String safeExceptionMessage(Exception exception) {
+        String message = exception.getMessage();
+        if (message == null || message.trim().isEmpty()) return exception.getClass().getSimpleName();
+        return message;
     }
 
     private void addModule(LinearLayout parent, String heading, String description) {
