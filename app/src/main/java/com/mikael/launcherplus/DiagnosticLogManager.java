@@ -100,7 +100,7 @@ public final class DiagnosticLogManager {
     private String sanitize(String input) {
         if (input == null) return "";
         String output = input;
-        output = Pattern.compile("(?i)(access[_-]?token|refresh[_-]?token|client[_-]?secret|password|passwd|authorization)(\\s*[=:]\\s*)[^\\s,;]+")
+        output = Pattern.compile("(?i)(access[_-]?token|refresh[_-]?token|client[_-]?secret|password|passwd|authorization)(\\s*[=:]\\s*)[^\\r\\n,;]+")
                 .matcher(output).replaceAll("$1$2[REDACTED]");
         output = Pattern.compile("(?i)Bearer\\s+[A-Za-z0-9._~+/-]+=*")
                 .matcher(output).replaceAll("Bearer [REDACTED]");
