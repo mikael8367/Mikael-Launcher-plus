@@ -124,9 +124,14 @@ public final class MainActivity extends Activity {
     }
 
     private View createDashboard() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BACKGROUND);
+
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setBackgroundColor(BACKGROUND);
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
@@ -158,11 +163,13 @@ public final class MainActivity extends Activity {
         previewTag.setTextColor(EMERALD);
         previewTag.setBackground(roundRect(EMERALD_DIM, 12, BORDER, 1));
         brandRow.addView(previewTag, params(-2, -2));
+        brandRow.setTag("inicio");
         page.addView(brandRow);
 
         TextView title = text("Seu Minecraft.\nDo seu jeito.", 29, TEXT, true);
         LinearLayout.LayoutParams titleParams = params(-1, -2);
         titleParams.topMargin = dp(22);
+        title.setTag("inicio");
         page.addView(title, titleParams);
 
         TextView intro = text(
@@ -171,6 +178,7 @@ public final class MainActivity extends Activity {
                 14, MUTED, false);
         LinearLayout.LayoutParams introParams = params(-1, -2);
         introParams.topMargin = dp(10);
+        intro.setTag("inicio");
         page.addView(intro, introParams);
 
         HorizontalScrollView sectionScroll = new HorizontalScrollView(this);
@@ -202,6 +210,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams sectionScrollParams = params(-1, dp(42));
         sectionScrollParams.topMargin = dp(18);
         sectionScrollParams.bottomMargin = dp(2);
+        sectionScroll.setTag("ocultar");
         page.addView(sectionScroll, sectionScrollParams);
 
         LinearLayout statusCard = new LinearLayout(this);
@@ -215,6 +224,7 @@ public final class MainActivity extends Activity {
         statusCard.setBackground(heroBackground);
         LinearLayout.LayoutParams cardParams = params(-1, -2);
         cardParams.topMargin = dp(18);
+        statusCard.setTag("inicio");
         page.addView(statusCard, cardParams);
 
         statusCard.addView(text("ESTADO DO PROJETO  •  0.1.0", 12, EMERALD, true));
@@ -235,6 +245,7 @@ public final class MainActivity extends Activity {
         Button play = primaryButton("JOGAR MINECRAFT", true);
         LinearLayout.LayoutParams playParams = params(-1, dp(56));
         playParams.topMargin = dp(20);
+        play.setTag("inicio");
         page.addView(play, playParams);
         play.setOnClickListener(v -> openEngineForVanillaTest());
 
@@ -244,6 +255,7 @@ public final class MainActivity extends Activity {
         versionsCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams versionsCardParams = params(-1, -2);
         versionsCardParams.topMargin = dp(20);
+        versionsCard.setTag("versoes");
         page.addView(versionsCard, versionsCardParams);
         navVersions.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, versionsCard.getTop() - dp(12))));
 
@@ -339,6 +351,7 @@ public final class MainActivity extends Activity {
         instancesCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams instancesCardParams = params(-1, -2);
         instancesCardParams.topMargin = dp(14);
+        instancesCard.setTag("versoes");
         page.addView(instancesCard, instancesCardParams);
         navInstances.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, instancesCard.getTop() - dp(12))));
         instancesCard.addView(text("INSTÂNCIAS LOCAIS", 12, EMERALD, true));
@@ -493,6 +506,7 @@ public final class MainActivity extends Activity {
         modsCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams modsCardParams = params(-1, -2);
         modsCardParams.topMargin = dp(14);
+        modsCard.setTag("versoes");
         page.addView(modsCard, modsCardParams);
         navMods.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, modsCard.getTop() - dp(12))));
         modsCard.addView(text("GERENCIADOR DE MODS", 12, EMERALD, true));
@@ -543,6 +557,7 @@ public final class MainActivity extends Activity {
         deviceCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams deviceCardParams = params(-1, -2);
         deviceCardParams.topMargin = dp(12);
+        deviceCard.setTag("configuracoes");
         page.addView(deviceCard, deviceCardParams);
         navDevice.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, deviceCard.getTop() - dp(12))));
         deviceCard.addView(text("DIAGNÓSTICO DO DISPOSITIVO", 12, EMERALD, true));
@@ -573,6 +588,7 @@ public final class MainActivity extends Activity {
         settingsCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams settingsCardParams = params(-1, -2);
         settingsCardParams.topMargin = dp(14);
+        settingsCard.setTag("configuracoes");
         page.addView(settingsCard, settingsCardParams);
         navSettings.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, settingsCard.getTop() - dp(12))));
         settingsCard.addView(text("PREFERÊNCIAS DO LAUNCHER", 12, EMERALD, true));
@@ -603,7 +619,47 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams rendererParams = params(-1, dp(48));
         settingsCard.addView(rendererSpinner, rendererParams);
 
+        TextView languageLabel = text("Idioma", 15, TEXT, true);
+        LinearLayout.LayoutParams languageLabelParams = params(-1, -2);
+        languageLabelParams.topMargin = dp(12);
+        settingsCard.addView(languageLabel, languageLabelParams);
+        Spinner languageSpinner = new Spinner(this);
+        String[] languages = {"Português (Brasil)", "English", "Español"};
+        ArrayAdapter<String> languageAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, languages);
+        languageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        languageSpinner.setAdapter(languageAdapter);
+        settingsCard.addView(languageSpinner, params(-1, dp(48)));
+
+        TextView accountLabel = text("Conta do jogo", 15, TEXT, true);
+        LinearLayout.LayoutParams accountLabelParams = params(-1, -2);
+        accountLabelParams.topMargin = dp(12);
+        settingsCard.addView(accountLabel, accountLabelParams);
+        Spinner accountSpinner = new Spinner(this);
+        String[] accountTypes = {"Offline (nome de jogador)", "Microsoft", "ely.by"};
+        ArrayAdapter<String> accountAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, accountTypes);
+        accountAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        accountSpinner.setAdapter(accountAdapter);
+        settingsCard.addView(accountSpinner, params(-1, dp(48)));
+        TextView accountNote = text("A seleção fica salva neste aparelho. O login Microsoft/ely.by ainda precisa ser integrado para autenticar de verdade.", 12, MUTED, false);
+        LinearLayout.LayoutParams accountNoteParams = params(-1, -2);
+        accountNoteParams.topMargin = dp(6);
+        settingsCard.addView(accountNote, accountNoteParams);
+
         SharedPreferences preferences = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
+        languageSpinner.setSelection(Math.max(0, Math.min(languages.length - 1, preferences.getInt("language_index", 0))));
+        accountSpinner.setSelection(Math.max(0, Math.min(accountTypes.length - 1, preferences.getInt("account_type_index", 0))));
+        languageSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                preferences.edit().putInt("language_index", position).putString("preferred_language", languages[position]).apply();
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+        });
+        accountSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                preferences.edit().putInt("account_type_index", position).putString("preferred_account_type", accountTypes[position]).apply();
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+        });
         ramSpinner.setSelection(Math.max(0, Math.min(ramOptions.length - 1, preferences.getInt("preferred_ram_index", 2))));
         rendererSpinner.setSelection(Math.max(0, Math.min(renderers.length - 1, preferences.getInt("preferred_renderer_index", 0))));
         android.widget.AdapterView.OnItemSelectedListener savePreferences = new android.widget.AdapterView.OnItemSelectedListener() {
@@ -620,12 +676,48 @@ public final class MainActivity extends Activity {
 
         TextView footer = text("Mikael Launcher Plus · versão 0.1.0 · base inicial",
                 12, MUTED, false);
+        footer.setTag("configuracoes");
         LinearLayout.LayoutParams footerParams = params(-1, -2);
         footerParams.topMargin = dp(24);
         footerParams.gravity = Gravity.CENTER_HORIZONTAL;
         footer.setGravity(Gravity.CENTER);
         page.addView(footer, footerParams);
-        return scroll;
+
+        // O conteúdo é separado em três telas simples controladas pela navegação inferior.
+        for (int i = 0; i < page.getChildCount(); i++) {
+            View child = page.getChildAt(i);
+            if (child.getTag() == null) child.setTag("versoes");
+        }
+        LinearLayout bottomNavigation = new LinearLayout(this);
+        bottomNavigation.setOrientation(LinearLayout.HORIZONTAL);
+        bottomNavigation.setGravity(Gravity.CENTER);
+        bottomNavigation.setPadding(dp(8), dp(8), dp(8), dp(8));
+        bottomNavigation.setBackground(roundRect(SURFACE, 16, BORDER, 1));
+        Button homeTab = button("⌂  Início", true);
+        Button versionsTab = button("▣  Versões", true);
+        Button settingsTab = button("⚙  Configurações", true);
+        bottomNavigation.addView(homeTab, new LinearLayout.LayoutParams(0, dp(48), 1));
+        bottomNavigation.addView(versionsTab, new LinearLayout.LayoutParams(0, dp(48), 1));
+        bottomNavigation.addView(settingsTab, new LinearLayout.LayoutParams(0, dp(48), 1));
+        LinearLayout.LayoutParams navParams = params(-1, dp(64));
+        navParams.leftMargin = dp(10);
+        navParams.rightMargin = dp(10);
+        navParams.bottomMargin = dp(6);
+        root.addView(bottomNavigation, navParams);
+        homeTab.setOnClickListener(v -> showDashboardTab(page, "inicio"));
+        versionsTab.setOnClickListener(v -> showDashboardTab(page, "versoes"));
+        settingsTab.setOnClickListener(v -> showDashboardTab(page, "configuracoes"));
+        showDashboardTab(page, "inicio");
+        return root;
+    }
+
+    private void showDashboardTab(LinearLayout page, String selectedTab) {
+        for (int i = 0; i < page.getChildCount(); i++) {
+            View child = page.getChildAt(i);
+            Object tag = child.getTag();
+            String section = tag == null ? "versoes" : String.valueOf(tag);
+            child.setVisibility(!"ocultar".equals(section) && selectedTab.equals(section) ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void loadOfficialVersions() {
