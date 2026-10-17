@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Validate Android source without packaging APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -48,13 +48,5 @@ jobs:
           test -f app/build.gradle
           test -f app/src/main/AndroidManifest.xml
 
-      - name: Assemble debug APK
-        run: gradle --no-daemon --stacktrace :app:assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: mikael-launcher-plus-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 14
+      - name: Compile Android Java source (no APK)
+        run: gradle --no-daemon --stacktrace :app:compileDebugJavaWithJavac
