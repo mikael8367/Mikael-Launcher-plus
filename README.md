@@ -5,7 +5,7 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 ## Estado atual
 
 - [x] Consulta do manifesto oficial da Mojang, com seleção de releases estáveis e consulta de metadados da versão (tipo, data, versão de Java, URL e SHA-1 do client).
-- [ ] Implementar download de arquivos, validação SHA-1 e instalação em instância.\n- [x] Filtrar versões por release, snapshot, beta antiga e alpha antiga; pesquisar por identificador e guardar a seleção.\n- [x] Consultar e copiar metadados de uma versão.\n- [x] Exibir diagnóstico informativo do Android e da memória disponível.
+- [ ] Implementar download de arquivos, validação SHA-1 e instalação em instância.\n- [x] Filtrar versões por release, snapshot, beta antiga e alpha antiga; pesquisar por identificador e guardar a seleção.\n- [x] Consultar e copiar metadados de uma versão.\n- [x] Exibir diagnóstico informativo do Android e da memória disponível.\n- [x] Salvar preferências de RAM e renderizador para uso futuro; ainda não aplicadas ao jogo.
 - [x] Projeto Android Java mínimo criado.
 - [x] Workflow automático para validar o código Java sem empacotar APK.\n- [x] Workflow de APK do motor configurado para execução manual, somente quando solicitado.
 - [x] Workflow separado para compilar uma base de motor Minecraft Android upstream, em revisão de compatibilidade/licenças.
