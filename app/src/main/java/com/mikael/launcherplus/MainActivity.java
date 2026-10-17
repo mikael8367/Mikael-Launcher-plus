@@ -765,18 +765,29 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "Crie ou selecione uma instância primeiro.", Toast.LENGTH_LONG).show();
             return;
         }
-        if (loaderSpinner == null || !"Vanilla".equals(String.valueOf(loaderSpinner.getSelectedItem()))) {
+        final String version;
+        final String instanceLoader;
+        try {
+            JSONObject selectedRecord = findInstanceRecord(instanceName);
+            if (selectedRecord == null) throw new IllegalArgumentException("A instância selecionada não existe mais.");
+            version = selectedRecord.optString("version", "");
+            instanceLoader = selectedRecord.optString("loader", "Vanilla");
+        } catch (Exception exception) {
+            Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!"Vanilla".equals(instanceLoader)) {
             new AlertDialog.Builder(this)
-                    .setTitle("Escolha Vanilla")
-                    .setMessage("Esta etapa instala apenas arquivos do cliente Vanilla. Forge, Fabric e OptiFine serão tratados em outra etapa.")
+                    .setTitle("Esta instância não é Vanilla")
+                    .setMessage("A instância selecionada usa " + instanceLoader
+                            + ". Esta etapa baixa apenas o cliente Vanilla; loaders serão tratados em outra etapa.")
                     .setPositiveButton("Entendi", (dialog, which) -> dialog.dismiss())
                     .show();
             return;
         }
-        final String version = getSelectedVersionForVanillaTest();
         final String metadataUrl = getSelectedVersionMetadataUrl(version);
         if (version.isEmpty() || metadataUrl == null) {
-            Toast.makeText(this, "Consulte o manifesto oficial e selecione uma versão primeiro.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "A versão desta instância não está disponível no manifesto carregado. Consulte as versões oficiais e tente novamente.", Toast.LENGTH_LONG).show();
             return;
         }
         if (stageVanillaButton != null) {
@@ -817,11 +828,21 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private JSONObject findInstanceRecord(String instanceName) throws Exception {
+        if (instanceManager == null) return null;
+        JSONArray records = instanceManager.getInstances();
+        for (int i = 0; i < records.length(); i++) {
+            JSONObject record = records.getJSONObject(i);
+            if (instanceName.equals(record.optString("name", ""))) return record;
+        }
+        return null;
+    }
+
     private String getSelectedVersionMetadataUrl(String version) {
-        synchronized (visibleVersionIds) {
-            int index = visibleVersionIds.indexOf(version);
-            if (index < 0 || index >= visibleVersionUrls.size()) return null;
-            String url = visibleVersionUrls.get(index);
+        synchronized (allVersionIds) {
+            int index = allVersionIds.indexOf(version);
+            if (index < 0 || index >= allVersionUrls.size()) return null;
+            String url = allVersionUrls.get(index);
             return url != null && url.startsWith("https://piston-meta.mojang.com/") ? url : null;
         }
     }
