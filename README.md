@@ -1,6 +1,6 @@
 # Mikael Launcher Plus
 
-Launcher Android para Minecraft: Java Edition. Este repositório está na fase inicial de integração e validação do motor Android.
+Launcher Android para Minecraft: Java Edition. O assistente de criação de versões está conectado aos instaladores nativos do motor Amethyst. A compilação integrada passou no GitHub Actions; o teste em aparelho físico e a entrada em um mundo ainda estão pendentes.
 
 ## Organização da interface
 
@@ -28,7 +28,7 @@ A navegação inferior separa as funções em quatro áreas, pensadas para telas
 ## Estado atual
 
 - [x] Consulta do manifesto oficial da Mojang, com seleção de releases estáveis e consulta de metadados da versão (tipo, data, versão de Java, URL e SHA-1 do client).
-- [ ] Implementar download dos arquivos oficiais, validação SHA-1 e instalação real em instância.
+- [ ] Completar a ligação do instalador próprio ao perfil real do motor. O assistente Criar versão e baixar já encaminha a seleção para os fluxos nativos de instalação do motor.
 - [x] Criar perfis locais privados com diretórios separados para mods, resourcepacks, shaderpacks, saves, config e logs.
 - [x] Persistir nome, versão escolhida e perfil de loader em `instance.json`, com seleção e exclusão do perfil.
 - [x] Importar e remover arquivos `.jar` na pasta privada de mods do perfil, com limite de 250 MB e SHA-256 informativo; ainda é armazenamento, não ativação no jogo.
@@ -43,21 +43,21 @@ A navegação inferior separa as funções em quatro áreas, pensadas para telas
 - [x] Workflow de APK do motor configurado para execução manual, somente quando solicitado.
 - [x] Workflow separado para preparar a integração do motor Android upstream; o modo padrão valida o código integrado sem empacotar APK.
 - [x] Revisão inicial do erro de CI: a action de setup do Android SDK tentava instalar o pacote legado inexistente `tools`; os workflows foram alterados para usar o SDK pré-instalado no runner e instalar as plataformas necessárias.
-- [ ] Validar compilação do código Java do app no GitHub Actions sem gerar APK.
-- [ ] Executar o modo `validate` do workflow do motor para verificar a integração sem gerar APK.
+- [x] Validar compilação do código Java do app no GitHub Actions sem gerar APK.
+- [x] Executar o modo `validate` do workflow do motor; a compilação Java integrada passou sem gerar APK.
 - [ ] Depois da validação de código, testar o motor integrado em aparelho físico; a geração do APK só pode ocorrer após autorização explícita.
 - [ ] Executar o teste ponta a ponta de Minecraft Vanilla em dispositivo físico conforme [docs/VANILLA-TEST.md](docs/VANILLA-TEST.md).
-- [ ] Validar versões, loaders, contas, instâncias e mods.
+- [ ] Testar no aparelho as versões, loaders, contas e instâncias; conferir logs de instalação e inicialização.
 
 ## Instâncias locais
 
-Os perfis são criados dentro do diretório privado do app (`files/instances/`), com um arquivo `instance.json` e diretórios de preparação. A seleção do loader é somente metadado do perfil: Forge/Fabric/OptiFine não são instalados por esse recurso. Arquivos JAR podem ser copiados para `mods/`, listados e removidos, mas ainda não são ligados à pasta real de jogo do motor.
+Os perfis em `files/instances/` são registros auxiliares do Mikael Launcher, com diretórios preparados para mods, saves, configurações e logs. Esses diretórios ainda não são a pasta de jogo ativa do motor, então importar um JAR ali não garante que o jogo o carregará.
 
-O botão **Iniciar Minecraft** tenta abrir o app Amethyst/Pojav se estiver instalado. No APK integrado preparado pelo workflow manual, o botão chama a tela de inicialização de armazenamento do próprio motor. Isso abre o launcher do motor; autenticação, download da versão e toque em Jogar ainda são necessários para entrar no mundo.
+O assistente **Criar versão e baixar**, na aba **Versões**, passa a versão escolhida, o loader e o nome do perfil ao motor integrado. Vanilla solicita a inicialização da versão selecionada; Forge, Fabric, Quilt, NeoForge e OptiFine usam os instaladores nativos do motor, selecionando uma release disponível para a versão-base antes de solicitar a inicialização. A compilação integrada passou no CI, mas o fluxo ainda precisa ser testado em aparelho físico. A compatibilidade depende das releases disponíveis: nem todo loader aceita toda versão do Minecraft, e Forge + OptiFine pode exigir combinações específicas.
 
 ## Etapa 2 — teste Vanilla
 
-O dashboard agora tem o botão **Testar Minecraft Vanilla**. Ele mostra a versão selecionada nesta tela e orienta a continuar no motor. A versão não é transferida automaticamente, e o dashboard ainda não instala o jogo. A etapa só será concluída quando Minecraft Vanilla iniciar e um mundo carregar em um aparelho físico. Consulte [o procedimento de teste](docs/VANILLA-TEST.md).
+O botão **Testar Minecraft Vanilla** serve para verificar o caminho básico do motor. Para criar uma instalação nomeada, use **Criar versão e baixar** na aba Versões: selecione primeiro a versão-base do Minecraft, depois o loader. No fluxo Vanilla, o motor recebe a versão e solicita a inicialização para baixar os componentes pendentes; para loaders, o motor abre o instalador nativo. A etapa ponta a ponta só será concluída quando Minecraft Vanilla iniciar e um mundo carregar em aparelho físico. Consulte [o procedimento de teste](docs/VANILLA-TEST.md).
 
 ## Etapa 5 — estabilidade e diagnóstico
 
