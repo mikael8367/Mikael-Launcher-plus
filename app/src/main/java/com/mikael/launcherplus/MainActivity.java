@@ -167,7 +167,7 @@ public final class MainActivity extends Activity {
         detailParams.topMargin = dp(10);
         statusCard.addView(detail, detailParams);
 
-        Button play = button("TESTAR MINECRAFT VANILLA", true);
+        Button play = button("ABRIR MOTOR PARA TESTE MANUAL", true);
         LinearLayout.LayoutParams playParams = params(-1, dp(54));
         playParams.topMargin = dp(20);
         page.addView(play, playParams);
@@ -272,7 +272,7 @@ public final class MainActivity extends Activity {
         addModule(page, "Versões e downloads",
                 "Consulta de manifesto implementada · instalação ainda pendente");
         addModule(page, "Instâncias e mods",
-                "Planejado · pastas isoladas, loaders e dependências");
+                "Perfis locais e importação de mods implementados · loaders e dependências ainda pendentes");
         addModule(page, "Contas e sessões",
                 "Planejado · autenticação oficial e armazenamento seguro");
         addModule(page, "Desempenho e diagnóstico",
