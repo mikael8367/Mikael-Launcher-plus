@@ -75,8 +75,13 @@ public final class MainActivity extends Activity {
     private DiagnosticLogManager diagnosticLogManager;
     private VersionArtifactInstaller versionArtifactInstaller;
     private InstanceReadinessChecker instanceReadinessChecker;
+    private VanillaAssetInstaller vanillaAssetInstaller;
+    private final java.util.concurrent.atomic.AtomicBoolean cancelAssetsRequested =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
     private Button stageVanillaButton;
     private Button diagnoseInstanceButton;
+    private Button stageAssetsButton;
+    private Button cancelAssetsButton;
     private TextView installStatusOutput;
     private TextView modsOutput;
     private boolean updatingInstances = false;
@@ -352,6 +357,24 @@ public final class MainActivity extends Activity {
         instancesCard.addView(stageVanillaButton, stageVanillaParams);
         stageVanillaButton.setOnClickListener(v -> stageVanillaArtifacts());
 
+        stageAssetsButton = button("BAIXAR E VERIFICAR ASSETS", true);
+        LinearLayout.LayoutParams stageAssetsParams = params(-1, dp(50));
+        stageAssetsParams.topMargin = dp(8);
+        instancesCard.addView(stageAssetsButton, stageAssetsParams);
+        stageAssetsButton.setOnClickListener(v -> stageVanillaAssets());
+
+        cancelAssetsButton = button("CANCELAR DOWNLOAD DE ASSETS", true);
+        LinearLayout.LayoutParams cancelAssetsParams = params(-1, dp(46));
+        cancelAssetsParams.topMargin = dp(6);
+        instancesCard.addView(cancelAssetsButton, cancelAssetsParams);
+        cancelAssetsButton.setEnabled(false);
+        cancelAssetsButton.setOnClickListener(v -> {
+            if (cancelAssetsRequested.compareAndSet(false, true)) {
+                cancelAssetsButton.setText("CANCELANDO... OS ARQUIVOS COMPLETOS SERÃO MANTIDOS");
+                Toast.makeText(this, "Cancelando com segurança; assets já verificados serão mantidos.", Toast.LENGTH_LONG).show();
+            }
+        });
+
         diagnoseInstanceButton = button("VERIFICAR INTEGRIDADE DA INSTÂNCIA", true);
         LinearLayout.LayoutParams diagnoseInstanceParams = params(-1, dp(50));
         diagnoseInstanceParams.topMargin = dp(8);
@@ -370,6 +393,7 @@ public final class MainActivity extends Activity {
             modCompatibilityChecker = new ModCompatibilityChecker(instanceManager, instanceModManager);
             versionArtifactInstaller = new VersionArtifactInstaller(instanceManager);
             instanceReadinessChecker = new InstanceReadinessChecker(instanceManager);
+            vanillaAssetInstaller = new VanillaAssetInstaller(instanceManager);
             refreshInstancesList();
         } catch (Exception exception) {
             instancesOutput.setText("Gerenciador de instâncias indisponível: " + safeExceptionMessage(exception));
@@ -377,6 +401,8 @@ public final class MainActivity extends Activity {
             deleteInstanceButton.setEnabled(false);
             if (stageVanillaButton != null) stageVanillaButton.setEnabled(false);
             if (diagnoseInstanceButton != null) diagnoseInstanceButton.setEnabled(false);
+            if (stageAssetsButton != null) stageAssetsButton.setEnabled(false);
+            if (cancelAssetsButton != null) cancelAssetsButton.setEnabled(false);
         }
 
         LinearLayout modsCard = new LinearLayout(this);
@@ -910,6 +936,102 @@ public final class MainActivity extends Activity {
                 }
                 refreshInstancesList();
                 Toast.makeText(this, completed ? "Arquivos oficiais baixados e verificados." : "Instalação parcial falhou.",
+                        Toast.LENGTH_LONG).show();
+            });
+        });
+    }
+
+    private void stageVanillaAssets() {
+        final String instanceName = selectedInstanceName();
+        if (instanceName == null || instanceManager == null || vanillaAssetInstaller == null) {
+            Toast.makeText(this, "Selecione uma instância primeiro.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final JSONObject selectedRecord;
+        try {
+            selectedRecord = findInstanceRecord(instanceName);
+            if (selectedRecord == null) throw new IllegalArgumentException("A instância selecionada não existe mais.");
+            if (!"Vanilla".equals(selectedRecord.optString("loader", "Vanilla"))) {
+                throw new IllegalArgumentException("O download de assets desta etapa só aceita instâncias Vanilla.");
+            }
+            if (!selectedRecord.optString("version", "").equals(selectedRecord.optString("stagedVersion", ""))
+                    || !"client_artifacts_staged".equals(selectedRecord.optString("installStatus", ""))) {
+                throw new IllegalArgumentException("Baixe e verifique primeiro os arquivos oficiais do cliente Vanilla.");
+            }
+        } catch (Exception exception) {
+            Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        cancelAssetsRequested.set(false);
+        if (stageAssetsButton != null) {
+            stageAssetsButton.setEnabled(false);
+            stageAssetsButton.setText("PREPARANDO DOWNLOAD...");
+        }
+        if (cancelAssetsButton != null) {
+            cancelAssetsButton.setEnabled(true);
+            cancelAssetsButton.setText("CANCELAR DOWNLOAD DE ASSETS");
+        }
+        if (installStatusOutput != null) {
+            installStatusOutput.setText("Lendo índice oficial de assets para "
+                    + selectedRecord.optString("version", "") + ". Os downloads e hashes serão verificados.");
+        }
+
+        ioExecutor.execute(() -> {
+            String resultText;
+            boolean completed = false;
+            try {
+                JSONObject result = vanillaAssetInstaller.downloadAssets(instanceName,
+                        new VanillaAssetInstaller.ProgressListener() {
+                            @Override
+                            public void onProgress(String phase, long done, long total) {
+                                String progress = phase + "\nItens verificados/processados: "
+                                        + done + " / " + total
+                                        + "\nO jogo não ficará jogável somente com assets.";
+                                mainHandler.post(() -> {
+                                    if (!cancelAssetsRequested.get() && installStatusOutput != null) {
+                                        installStatusOutput.setText(progress);
+                                    }
+                                });
+                            }
+
+                            @Override
+                            public boolean isCancelled() {
+                                return cancelAssetsRequested.get();
+                            }
+                        });
+                long bytes = result.optLong("assetTotalBytes", 0L);
+                resultText = "Assets oficiais baixados e verificados.\n"
+                        + "Índice: " + result.optString("assetIndexId", "—") + "\n"
+                        + "Objetos únicos: " + result.optLong("assetObjectsVerified", 0L) + "\n"
+                        + "Caminhos lógicos: " + result.optLong("assetLogicalPathCount", 0L) + "\n"
+                        + "Tamanho total dos objetos: " + (bytes / (1024L * 1024L)) + " MiB\n"
+                        + "Estado: assets_staged.\n\n"
+                        + "Ainda faltam bibliotecas do jogo, runtime Java compatível e ligação da instância ao diretório real do motor.";
+                completed = true;
+            } catch (VanillaAssetInstaller.DownloadCancelledException exception) {
+                resultText = "Download de assets cancelado com segurança.\n"
+                        + "Os assets completos e verificados foram mantidos; toque novamente em BAIXAR E VERIFICAR ASSETS para continuar.\n"
+                        + "A instância não foi marcada como jogável.";
+            } catch (Exception exception) {
+                resultText = "Não foi possível concluir os assets oficiais: "
+                        + safeExceptionMessage(exception) + "\nOs arquivos completos já verificados foram mantidos sempre que possível.";
+            }
+            final String displayResult = resultText;
+            final boolean success = completed;
+            mainHandler.post(() -> {
+                if (installStatusOutput != null) installStatusOutput.setText(displayResult);
+                if (stageAssetsButton != null) {
+                    stageAssetsButton.setEnabled(true);
+                    stageAssetsButton.setText("BAIXAR E VERIFICAR ASSETS");
+                }
+                if (cancelAssetsButton != null) {
+                    cancelAssetsButton.setEnabled(false);
+                    cancelAssetsButton.setText("CANCELAR DOWNLOAD DE ASSETS");
+                }
+                refreshInstancesList();
+                Toast.makeText(this,
+                        success ? "Assets oficiais verificados." : "Download de assets não concluído.",
                         Toast.LENGTH_LONG).show();
             });
         });
