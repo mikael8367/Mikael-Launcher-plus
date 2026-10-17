@@ -35,7 +35,12 @@ public final class VersionArtifactInstaller {
             throws IOException {
         String id = validateVersionId(versionId);
         validateHttpsUrl(metadataUrl, true);
-        File instance = instances.getInstanceDirectory(instanceName);
+        final File instance;
+        try {
+            instance = instances.getInstanceDirectory(instanceName);
+        } catch (org.json.JSONException e) {
+            throw new IOException("Não foi possível ler o índice de instâncias.", e);
+        }
         File versionsRoot = safeChild(instance, "versions");
         ensureDirectory(versionsRoot);
         File versionDirectory = safeChild(versionsRoot, id);
