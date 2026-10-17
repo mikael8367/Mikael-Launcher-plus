@@ -1643,18 +1643,23 @@ public final class MainActivity extends Activity {
     }
 
     private void openEngineForVanillaTest() {
-        if (MinecraftEngineBridge.openInstalledEngine(this)) {
+        String requestedVersion = getSelectedVersionForVanillaTest();
+        if (!requestedVersion.matches("[A-Za-z0-9._-]{1,100}")) {
+            Toast.makeText(this, "Escolha uma versão oficial válida antes de iniciar.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (MinecraftEngineBridge.openInstalledEngine(this, requestedVersion)) {
             Toast.makeText(this,
-                    "Motor aberto. Selecione nele a mesma versão Vanilla, instale-a e teste um mundo. "
-                            + "A versão escolhida nesta tela não é transferida automaticamente.",
+                    "Pedido enviado ao motor para iniciar Minecraft " + requestedVersion
+                            + ". Na primeira execução, o download e a autenticação podem ser necessários.",
                     Toast.LENGTH_LONG).show();
             return;
         }
         new AlertDialog.Builder(this)
                 .setTitle("Motor do Minecraft não encontrado")
-                .setMessage("Não foi encontrada uma instalação compatível do motor Amethyst/Pojav. "
-                        + "O teste real de Vanilla depende da integração do motor e de um teste em aparelho. "
-                        + "Nenhum APK foi gerado.")
+                .setMessage("Este repositório contém a interface e a integração-fonte, mas o jogo real precisa "
+                        + "do motor Amethyst/Pojav integrado ao aplicativo. Nenhum motor compatível foi encontrado. "
+                        + "A compilação de validação não gera APK e não comprova uma execução em aparelho.")
                 .setPositiveButton("Entendi", (dialog, which) -> dialog.dismiss())
                 .show();
     }
