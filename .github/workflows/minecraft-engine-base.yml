@@ -83,6 +83,59 @@ jobs:
           path.write_text(content)
           PY
 
+      - name: Integrate Mikael UI and instance tools into the engine app
+        run: |
+          set -euo pipefail
+          source_dir="$GITHUB_WORKSPACE/app/src/main/java/com/mikael/launcherplus"
+          destination_dir="$GITHUB_WORKSPACE/upstream/Amethyst-Android/app_pojavlauncher/src/main/java/com/mikael/launcherplus"
+          test -f "$source_dir/MainActivity.java"
+          test -f "$source_dir/InstanceManager.java"
+          test -f "$source_dir/InstanceModManager.java"
+          test -f "$source_dir/MinecraftEngineBridge.java"
+          mkdir -p "$destination_dir"
+          cp "$source_dir/MainActivity.java" "$source_dir/InstanceManager.java" \
+             "$source_dir/InstanceModManager.java" "$source_dir/MinecraftEngineBridge.java" \
+             "$destination_dir/"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/AndroidManifest.xml")
+          content = path.read_text()
+          old = """        <activity
+                      android:name=".TestStorageActivity"
+                      android:exported="true"
+                      android:label="@string/app_short_name"
+                      android:launchMode="singleTop">
+                  <intent-filter>
+                      <action android:name="android.intent.action.MAIN" />
+
+                      <category android:name="android.intent.category.LAUNCHER" />
+                  </intent-filter>
+              </activity>"""
+          new = """        <activity
+                      android:name=".TestStorageActivity"
+                      android:exported="false"
+                      android:label="@string/app_short_name"
+                      android:launchMode="singleTop" />
+              <activity
+                      android:name="com.mikael.launcherplus.MainActivity"
+                      android:configChanges="orientation|screenSize|keyboardHidden"
+                      android:exported="true"
+                      android:label="@string/app_name">
+                  <intent-filter>
+                      <action android:name="android.intent.action.MAIN" />
+                      <category android:name="android.intent.category.LAUNCHER" />
+                  </intent-filter>
+              </activity>"""
+          if old not in content:
+              raise SystemExit("Expected pinned upstream launcher activity block was not found")
+          if "com.mikael.launcherplus.MainActivity" in content:
+              raise SystemExit("Mikael launcher activity already exists; refusing to duplicate it")
+          path.write_text(content.replace(old, new, 1))
+          PY
+          grep -q 'android:name="com.mikael.launcherplus.MainActivity"' \
+            upstream/Amethyst-Android/app_pojavlauncher/src/main/AndroidManifest.xml
+
       - name: Build upstream Android launcher
         working-directory: upstream/Amethyst-Android
         run: ./gradlew --no-daemon --stacktrace :app_pojavlauncher:assembleDebug
@@ -90,7 +143,7 @@ jobs:
       - name: Upload upstream engine APK and build provenance
         uses: actions/upload-artifact@v4
         with:
-          name: amethyst-engine-base-debug
+          name: mikael-launcher-plus-engine-test-debug
           path: |
             upstream/Amethyst-Android/app_pojavlauncher/build/outputs/apk/debug/*.apk
             upstream-commit.txt
