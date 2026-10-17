@@ -130,19 +130,34 @@ public final class MainActivity extends Activity {
 
         TextView detail = text(
                 "Manifesto oficial: consulta implementada\n"
-                        + "Downloads do jogo: não implementados\n"
-                        + "Runtime Java e renderizador: não integrados",
+                        + "Perfis de instância: gerenciamento local implementado\n"
+                        + "Motor de jogo: abre o app complementar se instalado",
                 14, MUTED, false);
         LinearLayout.LayoutParams detailParams = params(-1, -2);
         detailParams.topMargin = dp(10);
         statusCard.addView(detail, detailParams);
 
-        Button play = button("JOGAR  ·  EM DESENVOLVIMENTO", false);
+        Button play = button("INICIAR MINECRAFT", true);
         LinearLayout.LayoutParams playParams = params(-1, dp(54));
         playParams.topMargin = dp(20);
         page.addView(play, playParams);
-        play.setOnClickListener(v -> Toast.makeText(
-                this, "O motor do Minecraft ainda não foi integrado.", Toast.LENGTH_LONG).show());
+        play.setOnClickListener(v -> {
+            if (MinecraftEngineBridge.openInstalledEngine(this)) {
+                Toast.makeText(this,
+                        "Motor aberto. No motor, entre na conta, instale/seleciona uma versão e toque em Jogar. "
+                                + "A versão desta tela ainda não é transferida automaticamente.",
+                        Toast.LENGTH_LONG).show();
+            } else {
+                new AlertDialog.Builder(this)
+                        .setTitle("Motor do Minecraft não encontrado")
+                        .setMessage("O botão agora procura e abre o motor Android Amethyst/Pojav se ele estiver instalado. "
+                                + "Este projeto ainda não inclui esse motor dentro do mesmo APK. "
+                                + "Sem o motor instalado, não é possível iniciar Minecraft a partir desta tela. "
+                                + "Nenhum APK foi gerado.")
+                        .setPositiveButton("Entendi", (dialog, which) -> dialog.dismiss())
+                        .show();
+            }
+        });
 
         LinearLayout versionsCard = new LinearLayout(this);
         versionsCard.setOrientation(LinearLayout.VERTICAL);
