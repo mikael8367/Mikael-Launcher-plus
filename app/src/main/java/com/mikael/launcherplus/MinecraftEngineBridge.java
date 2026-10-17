@@ -15,6 +15,8 @@ import android.content.pm.PackageManager;
 public final class MinecraftEngineBridge {
     public static final String EXTRA_REQUESTED_VERSION =
             "com.mikael.launcherplus.extra.REQUESTED_VERSION";
+    public static final String EXTRA_REQUESTED_LOADER =
+            "com.mikael.launcherplus.extra.REQUESTED_LOADER";
 
     private static final String[] ENGINE_PACKAGES = {
             "org.angelauramc.amethyst.debug",
@@ -55,6 +57,40 @@ public final class MinecraftEngineBridge {
             }
         }
         return false;
+    }
+
+    /**
+     * Starts the installer path in the integrated Amethyst engine. A standalone UI-only
+     * build deliberately returns false rather than pretending an external launcher has
+     * understood the custom installation request.
+     */
+    public static boolean openVersionInstaller(Activity activity, String requestedVersion, String loader) {
+        if (activity == null || !isValidVersion(requestedVersion) || !isValidLoader(loader)) return false;
+        String ownPackage = activity.getPackageName();
+        if (!"org.angelauramc.amethyst.debug".equals(ownPackage)
+                && !"org.angelauramc.amethyst".equals(ownPackage)) {
+            return false;
+        }
+
+        Intent bootstrap = new Intent();
+        bootstrap.setClassName(ownPackage, "net.kdt.pojavlaunch.TestStorageActivity");
+        bootstrap.putExtra(EXTRA_REQUESTED_VERSION, requestedVersion);
+        bootstrap.putExtra(EXTRA_REQUESTED_LOADER, loader);
+        try {
+            activity.startActivity(bootstrap);
+            return true;
+        } catch (ActivityNotFoundException | SecurityException ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isValidLoader(String value) {
+        if (value == null) return false;
+        return "Vanilla".equals(value)
+                || "Forge".equals(value)
+                || "Fabric".equals(value)
+                || "OptiFine".equals(value)
+                || "Forge + OptiFine".equals(value);
     }
 
     private static boolean isValidVersion(String value) {
