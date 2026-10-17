@@ -1210,12 +1210,10 @@ jobs:
           fabric_path.write_text(fabric)
           
           # Resume after native installer: rename the real profile before game launch; Forge+OptiFine passes its label into phase two.
-          pending_anchor = '''                      String gameVersion = prefs.getString("pending_game_version", "");
-                                if (gameVersion == null || !gameVersion.matches("[A-Za-z0-9._-]{1,100}")) {'''
-          pending_new = '''                      String gameVersion = prefs.getString("pending_game_version", "");
-                                String requestedProfileName = prefs.getString("pending_profile_name", "");
-                                if (gameVersion == null || !gameVersion.matches("[A-Za-z0-9._-]{1,100}")) {'''
-          launcher = replace_once(launcher, pending_anchor, pending_new, "read pending native profile name")
+          pending_line = 'String gameVersion = prefs.getString("pending_game_version", "");'
+          if launcher.count(pending_line) != 1:
+              raise SystemExit("Expected exactly one pending native game-version line")
+          launcher = launcher.replace(pending_line, pending_line + '\\n                      String requestedProfileName = prefs.getString("pending_profile_name", "");', 1)
           # The current generated launcher method is in launcher before the fragments are patched in the later sections above.
           # Re-read it because the routing source was already modified; update the pending installer branch in the same source.
           launcher = replace_once(
