@@ -7,7 +7,10 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 - [x] Consulta do manifesto oficial da Mojang, com seleção de releases estáveis e consulta de metadados da versão (tipo, data, versão de Java, URL e SHA-1 do client).
 - [ ] Implementar download dos arquivos oficiais, validação SHA-1 e instalação real em instância.
 - [x] Criar perfis locais privados com diretórios separados para mods, resourcepacks, shaderpacks, saves, config e logs.
-- [x] Persistir nome, versão escolhida e perfil de loader em `instance.json`, com seleção e exclusão do perfil.\n- [x] Importar e remover arquivos `.jar` na pasta privada de mods do perfil, com limite de 250 MB e SHA-256 informativo; ainda é armazenamento, não ativação no jogo.\n- [x] Botão **Iniciar Minecraft** tenta abrir uma instalação Amethyst/Pojav detectada no aparelho.\n- [x] Workflow manual preparado para empacotar a interface Mikael junto ao código do motor Amethyst.
+- [x] Persistir nome, versão escolhida e perfil de loader em `instance.json`, com seleção e exclusão do perfil.
+- [x] Importar e remover arquivos `.jar` na pasta privada de mods do perfil, com limite de 250 MB e SHA-256 informativo; ainda é armazenamento, não ativação no jogo.
+- [x] Botão **Iniciar Minecraft** tenta abrir uma instalação Amethyst/Pojav detectada no aparelho.
+- [x] Workflow manual preparado para empacotar a interface Mikael junto ao código do motor Amethyst.
 - [x] Filtrar versões por release, snapshot, beta antiga e alpha antiga; pesquisar por identificador e guardar a seleção.
 - [x] Consultar e copiar metadados de uma versão.
 - [x] Exibir diagnóstico informativo do Android e da memória disponível.
