@@ -81,7 +81,6 @@ public final class DiagnosticLogManager {
                 .append("Android: ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n")
                 .append("Thread: ").append(thread == null ? "desconhecida" : thread.getName()).append('\n');
         if (throwable != null) {
-            java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.StringWriter());
             java.io.StringWriter trace = new java.io.StringWriter();
             java.io.PrintWriter traceWriter = new java.io.PrintWriter(trace);
             throwable.printStackTrace(traceWriter);
