@@ -36,6 +36,10 @@ O botão **Iniciar Minecraft** tenta abrir o app Amethyst/Pojav se estiver insta
 
 O dashboard agora tem o botão **Testar Minecraft Vanilla**. Ele mostra a versão selecionada nesta tela e orienta a continuar no motor. A versão não é transferida automaticamente, e o dashboard ainda não instala o jogo. A etapa só será concluída quando Minecraft Vanilla iniciar e um mundo carregar em um aparelho físico. Consulte [o procedimento de teste](docs/VANILLA-TEST.md).
 
+## Etapa 5 — estabilidade e diagnóstico
+
+O dashboard inclui cópia de um relatório de diagnóstico do dispositivo e visualização da última falha Java registrada. O log é privado ao app, limitado a 256 KiB e filtrado para padrões comuns de segredos; revise qualquer conteúdo antes de compartilhar. Isso não captura todos os tipos de falha, nem significa que preferências de RAM/renderizador já sejam aplicadas ao motor. Consulte [a documentação da etapa 5](docs/ACCOUNTS-STABILITY-PERFORMANCE.md).
+
 ## Workflows
 
 - [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): valida a compilação do código Java e não empacota APK.
