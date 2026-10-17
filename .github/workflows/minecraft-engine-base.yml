@@ -265,7 +265,7 @@ jobs:
               "            }\n"
               "            profile.lastVersionId = mikaelRequestedVersion;\n"
               "            LauncherProfiles.mainProfileJson.profiles.put(selectedProfile, profile);\n"
-              "            LauncherProfiles.write();\\n"
+              "            LauncherProfiles.write();\n"
               "            mikaelRequestedVersion = null;\n"
               "            getIntent().removeExtra(\"" + extra + "\");\n"
               "            ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true);\n"
