@@ -186,6 +186,73 @@ public final class InstanceManager {
         writeJsonAtomically(indexFile, instances);
     }
 
+    public synchronized void updateAssetStatus(String name, JSONObject asset)
+            throws IOException, JSONException {
+        String safeName = validateName(name);
+        String status = asset == null ? "" : asset.optString("status", "");
+        if (!"assets_staged".equals(status) && !"assets_partial".equals(status)) {
+            throw new IllegalArgumentException("Estado de assets inválido.");
+        }
+        String indexId = asset.optString("assetIndexId", "");
+        String indexSha1 = asset.optString("assetIndexSha1", "").toLowerCase(Locale.ROOT);
+        String relativePath = asset.optString("assetIndexRelativePath", "");
+        if (!indexId.matches("[A-Za-z0-9._-]{1,100}") || ".".equals(indexId) || "..".equals(indexId)
+                || !indexSha1.matches("[0-9a-f]{40}")
+                || !("assets/indexes/" + indexId + ".json").equals(relativePath)) {
+            throw new IllegalArgumentException("Metadados do índice de assets inválidos.");
+        }
+
+        JSONArray instances = getInstances();
+        JSONObject matched = null;
+        for (int i = 0; i < instances.length(); i++) {
+            JSONObject record = instances.getJSONObject(i);
+            if (safeName.equals(record.optString("name", ""))) {
+                matched = record;
+                writeAssetFields(record, asset, status, indexId, indexSha1, relativePath);
+                break;
+            }
+        }
+        if (matched == null) throw new IllegalArgumentException("A instância selecionada não existe mais.");
+
+        File profileFile = new File(getInstanceDirectory(safeName), "instance.json");
+        JSONObject profile = readJsonFile(profileFile, 256 * 1024);
+        writeAssetFields(profile, asset, status, indexId, indexSha1, relativePath);
+        profile.put("gameInstalled", false);
+        writeJsonAtomically(profileFile, profile);
+        writeJsonAtomically(indexFile, instances);
+    }
+
+    private void writeAssetFields(JSONObject target, JSONObject asset, String status,
+                                  String indexId, String indexSha1, String relativePath)
+            throws JSONException {
+        target.put("assetInstallStatus", status);
+        target.put("assetsInstalled", "assets_staged".equals(status));
+        target.put("assetIndexId", indexId);
+        target.put("assetIndexSha1", indexSha1);
+        target.put("assetIndexRelativePath", relativePath);
+        target.put("assetObjectCount", Math.max(0L, asset.optLong("assetObjectCount", 0L)));
+        target.put("assetObjectsVerified", Math.max(0L, asset.optLong("assetObjectsVerified", 0L)));
+        target.put("assetLogicalPathCount", Math.max(0L, asset.optLong("assetLogicalPathCount", 0L)));
+        target.put("assetLogicalPathsVerified", Math.max(0L, asset.optLong("assetLogicalPathsVerified", 0L)));
+        target.put("assetTotalBytes", Math.max(0L, asset.optLong("assetTotalBytes", 0L)));
+        target.put("assetVirtual", asset.optBoolean("assetVirtual", false));
+        target.put("assetMapToResources", asset.optBoolean("assetMapToResources", false));
+        target.put("assetsCheckedAt", System.currentTimeMillis());
+    }
+
+    private JSONObject readJsonFile(File file, int maxBytes) throws IOException, JSONException {
+        try (FileInputStream input = new FileInputStream(file);
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+                if (output.size() > maxBytes) throw new IOException("Os metadados da instância excedem o limite.");
+            }
+            return new JSONObject(new String(output.toByteArray(), StandardCharsets.UTF_8));
+        }
+    }
+
     public synchronized boolean deleteInstance(String name) throws IOException, JSONException {
         String safeName = validateName(name);
         JSONArray current = getInstances();
