@@ -1378,17 +1378,27 @@ public final class MainActivity extends Activity {
 
     private void importModFile(Uri uri, String instanceName, String fileName) {
         if (instanceModManager == null) return;
-        try {
-            InputStream stream = getContentResolver().openInputStream(uri);
-            if (stream == null) throw new java.io.IOException("O arquivo selecionado não pôde ser lido.");
-            JSONObject imported = instanceModManager.importMod(instanceName, fileName, stream);
-            refreshModsList();
-            String hash = imported.optString("sha256", "");
-            Toast.makeText(this, "Mod copiado para a instância. SHA-256: "
-                    + (hash.length() > 16 ? hash.substring(0, 16) + "…" : hash), Toast.LENGTH_LONG).show();
-        } catch (Exception exception) {
-            Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
-        }
+        Toast.makeText(this, "Importando e verificando o JAR…", Toast.LENGTH_SHORT).show();
+        ioExecutor.execute(() -> {
+            try (InputStream stream = getContentResolver().openInputStream(uri)) {
+                if (stream == null) throw new java.io.IOException("O arquivo selecionado não pôde ser lido.");
+                JSONObject imported = instanceModManager.importMod(instanceName, fileName, stream);
+                String hash = imported.optString("sha256", "");
+                String shortHash = hash.length() > 16 ? hash.substring(0, 16) + "…" : hash;
+                mainHandler.post(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    refreshModsList();
+                    Toast.makeText(this, "Mod copiado para a instância. SHA-256: "
+                            + shortHash, Toast.LENGTH_LONG).show();
+                });
+            } catch (Exception exception) {
+                String message = safeExceptionMessage(exception);
+                mainHandler.post(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                });
+            }
+        });
     }
 
     private void refreshModsList() {
