@@ -459,14 +459,6 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private String latestVersionFromDisplay(String text) {
-        String prefix = "Última release estável: ";
-        for (String line : text.split("\\n")) {
-            if (line.startsWith(prefix)) return line.substring(prefix.length()).trim();
-        }
-        return "";
-    }
-
     private void loadSelectedVersionMetadata() {
         if (versionSpinner == null || versionSpinner.getSelectedItem() == null) {
             Toast.makeText(this, "Consulte o manifesto e escolha uma versão primeiro.", Toast.LENGTH_SHORT).show();
