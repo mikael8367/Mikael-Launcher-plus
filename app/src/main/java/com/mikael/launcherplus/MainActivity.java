@@ -76,12 +76,17 @@ public final class MainActivity extends Activity {
     private VersionArtifactInstaller versionArtifactInstaller;
     private InstanceReadinessChecker instanceReadinessChecker;
     private VanillaAssetInstaller vanillaAssetInstaller;
+    private VanillaLibraryInstaller vanillaLibraryInstaller;
     private final java.util.concurrent.atomic.AtomicBoolean cancelAssetsRequested =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final java.util.concurrent.atomic.AtomicBoolean cancelLibrariesRequested =
             new java.util.concurrent.atomic.AtomicBoolean(false);
     private Button stageVanillaButton;
     private Button diagnoseInstanceButton;
     private Button stageAssetsButton;
     private Button cancelAssetsButton;
+    private Button stageLibrariesButton;
+    private Button cancelLibrariesButton;
     private TextView installStatusOutput;
     private TextView modsOutput;
     private boolean updatingInstances = false;
@@ -375,6 +380,24 @@ public final class MainActivity extends Activity {
             }
         });
 
+        stageLibrariesButton = button("BAIXAR E VERIFICAR BIBLIOTECAS", true);
+        LinearLayout.LayoutParams stageLibrariesParams = params(-1, dp(50));
+        stageLibrariesParams.topMargin = dp(8);
+        instancesCard.addView(stageLibrariesButton, stageLibrariesParams);
+        stageLibrariesButton.setOnClickListener(v -> stageVanillaLibraries());
+
+        cancelLibrariesButton = button("CANCELAR DOWNLOAD DE BIBLIOTECAS", true);
+        LinearLayout.LayoutParams cancelLibrariesParams = params(-1, dp(46));
+        cancelLibrariesParams.topMargin = dp(6);
+        instancesCard.addView(cancelLibrariesButton, cancelLibrariesParams);
+        cancelLibrariesButton.setEnabled(false);
+        cancelLibrariesButton.setOnClickListener(v -> {
+            if (cancelLibrariesRequested.compareAndSet(false, true)) {
+                cancelLibrariesButton.setText("CANCELANDO DOWNLOAD...");
+                Toast.makeText(this, "Os arquivos de biblioteca já verificados serão preservados.", Toast.LENGTH_LONG).show();
+            }
+        });
+
         diagnoseInstanceButton = button("VERIFICAR INTEGRIDADE DA INSTÂNCIA", true);
         LinearLayout.LayoutParams diagnoseInstanceParams = params(-1, dp(50));
         diagnoseInstanceParams.topMargin = dp(8);
@@ -394,6 +417,7 @@ public final class MainActivity extends Activity {
             versionArtifactInstaller = new VersionArtifactInstaller(instanceManager);
             instanceReadinessChecker = new InstanceReadinessChecker(instanceManager);
             vanillaAssetInstaller = new VanillaAssetInstaller(instanceManager);
+            vanillaLibraryInstaller = new VanillaLibraryInstaller(instanceManager);
             refreshInstancesList();
         } catch (Exception exception) {
             instancesOutput.setText("Gerenciador de instâncias indisponível: " + safeExceptionMessage(exception));
@@ -403,6 +427,8 @@ public final class MainActivity extends Activity {
             if (diagnoseInstanceButton != null) diagnoseInstanceButton.setEnabled(false);
             if (stageAssetsButton != null) stageAssetsButton.setEnabled(false);
             if (cancelAssetsButton != null) cancelAssetsButton.setEnabled(false);
+            if (stageLibrariesButton != null) stageLibrariesButton.setEnabled(false);
+            if (cancelLibrariesButton != null) cancelLibrariesButton.setEnabled(false);
         }
 
         LinearLayout modsCard = new LinearLayout(this);
@@ -1032,6 +1058,108 @@ public final class MainActivity extends Activity {
                 refreshInstancesList();
                 Toast.makeText(this,
                         success ? "Assets oficiais verificados." : "Download de assets não concluído.",
+                        Toast.LENGTH_LONG).show();
+            });
+        });
+    }
+
+    private void stageVanillaLibraries() {
+        final String instanceName = selectedInstanceName();
+        if (instanceName == null || instanceManager == null || vanillaLibraryInstaller == null) {
+            Toast.makeText(this, "Selecione uma instância primeiro.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            JSONObject record = findInstanceRecord(instanceName);
+            if (record == null) throw new IllegalArgumentException("A instância selecionada não existe mais.");
+            if (!"Vanilla".equals(record.optString("loader", "Vanilla"))) {
+                throw new IllegalArgumentException("Esta etapa aceita somente instâncias Vanilla.");
+            }
+            if (!record.optString("version", "").equals(record.optString("stagedVersion", ""))
+                    || !"client_artifacts_staged".equals(record.optString("installStatus", ""))) {
+                throw new IllegalArgumentException("Baixe primeiro os arquivos oficiais do cliente.");
+            }
+        } catch (Exception exception) {
+            Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        cancelLibrariesRequested.set(false);
+        if (stageLibrariesButton != null) {
+            stageLibrariesButton.setEnabled(false);
+            stageLibrariesButton.setText("PREPARANDO BIBLIOTECAS...");
+        }
+        if (cancelLibrariesButton != null) {
+            cancelLibrariesButton.setEnabled(true);
+            cancelLibrariesButton.setText("CANCELAR DOWNLOAD DE BIBLIOTECAS");
+        }
+        if (installStatusOutput != null) {
+            installStatusOutput.setText("Lendo o manifesto oficial e verificando bibliotecas Java aplicáveis a Linux/ARM64. Bibliotecas nativas e runtime ainda dependem do motor.");
+        }
+
+        ioExecutor.execute(() -> {
+            String resultText;
+            boolean complete = false;
+            boolean partial = false;
+            try {
+                JSONObject result = vanillaLibraryInstaller.downloadLibraries(instanceName,
+                        new VanillaLibraryInstaller.ProgressListener() {
+                            @Override
+                            public void onProgress(String phase, long done, long total) {
+                                String message = phase + "\nArquivos verificados: " + done + " / " + total
+                                        + "\nClassificadores nativos e runtime Java não são instalados nesta etapa.";
+                                mainHandler.post(() -> {
+                                    if (!cancelLibrariesRequested.get() && installStatusOutput != null) {
+                                        installStatusOutput.setText(message);
+                                    }
+                                });
+                            }
+                            @Override
+                            public boolean isCancelled() {
+                                return cancelLibrariesRequested.get();
+                            }
+                        });
+                long bytes = result.optLong("totalBytes", 0L);
+                int unresolved = (int) result.optLong("unresolvedCount", 0L);
+                partial = "libraries_partial".equals(result.optString("status", ""));
+                resultText = (partial ? "BIBLIOTECAS PARCIAIS — " : "BIBLIOTECAS VERIFICADAS — ")
+                        + result.optString("version", "") + "\n"
+                        + "Arquivos: " + result.optLong("verifiedCount", 0L) + " / "
+                        + result.optLong("plannedCount", 0L) + "\n"
+                        + "Tamanho: " + (bytes / (1024L * 1024L)) + " MiB\n"
+                        + "Itens não resolvidos: " + unresolved + "\n";
+                org.json.JSONArray unresolvedItems = result.optJSONArray("unresolved");
+                if (unresolvedItems != null) {
+                    for (int i = 0; i < Math.min(unresolvedItems.length(), 8); i++) {
+                        resultText += "• " + unresolvedItems.optString(i) + "\n";
+                    }
+                    if (unresolvedItems.length() > 8) resultText += "• ... e mais itens no manifesto local.\n";
+                }
+                resultText += "\nO launcher ainda não está pronto para iniciar: runtime Java, classificadores nativos, integração ao diretório do motor e teste real continuam pendentes.";
+                complete = !partial;
+            } catch (VanillaLibraryInstaller.DownloadCancelledException exception) {
+                resultText = "Download de bibliotecas cancelado. Os JARs completos já verificados foram mantidos; tente novamente para continuar.\nA instância não foi marcada como jogável.";
+            } catch (Exception exception) {
+                resultText = "Não foi possível concluir as bibliotecas: " + safeExceptionMessage(exception)
+                        + "\nOs JARs completos e verificados existentes foram preservados quando possível.";
+            }
+            final String display = resultText;
+            final boolean success = complete;
+            final boolean isPartial = partial;
+            mainHandler.post(() -> {
+                if (installStatusOutput != null) installStatusOutput.setText(display);
+                if (stageLibrariesButton != null) {
+                    stageLibrariesButton.setEnabled(true);
+                    stageLibrariesButton.setText("BAIXAR E VERIFICAR BIBLIOTECAS");
+                }
+                if (cancelLibrariesButton != null) {
+                    cancelLibrariesButton.setEnabled(false);
+                    cancelLibrariesButton.setText("CANCELAR DOWNLOAD DE BIBLIOTECAS");
+                }
+                refreshInstancesList();
+                Toast.makeText(this, success ? "Bibliotecas verificadas."
+                                : isPartial ? "Bibliotecas baixadas parcialmente; confira os bloqueios."
+                                : "Download de bibliotecas não concluído.",
                         Toast.LENGTH_LONG).show();
             });
         });
