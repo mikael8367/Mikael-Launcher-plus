@@ -976,12 +976,12 @@ jobs:
         run: ./gradlew --no-daemon --stacktrace :app_pojavlauncher:compileDebugJavaWithJavac
 
       - name: Build upstream Android launcher (APK generation explicitly requested)
-        if: inputs.mode == 'build'
+        if: inputs.mode == 'build' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[build-apk]'))
         working-directory: upstream/Amethyst-Android
         run: ./gradlew --no-daemon --stacktrace :app_pojavlauncher:assembleDebug
 
       - name: Upload APK and build provenance
-        if: inputs.mode == 'build'
+        if: inputs.mode == 'build' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[build-apk]'))
         uses: actions/upload-artifact@v4
         with:
           name: mikael-launcher-plus-engine-test-debug
