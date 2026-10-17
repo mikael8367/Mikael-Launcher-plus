@@ -1108,7 +1108,7 @@ public final class MainActivity extends Activity {
                         Toast.LENGTH_LONG).show();
             } else {
                 String message = "O perfil local foi criado, mas a instalação real não foi iniciada. "
-                        + "É necessário usar a versão do Mikael Launcher Plus integrada ao motor Amethyst; "
+                        + "O mecanismo de Minecraft precisa estar integrado ao Mikael Launcher Plus; "
                         + "a interface isolada não instala modloaders.";
                 if (installStatusOutput != null) installStatusOutput.setText(message);
                 new AlertDialog.Builder(this)
