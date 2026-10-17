@@ -309,6 +309,33 @@ public final class MainActivity extends Activity {
         spinnerParams.topMargin = dp(12);
         versionsCard.addView(versionSpinner, spinnerParams);
 
+        versionsCard.addView(text("Nome da nova versão", 14, TEXT, true));
+        instanceNameInput = new EditText(this);
+        instanceNameInput.setSingleLine(true);
+        instanceNameInput.setTextSize(15);
+        instanceNameInput.setTextColor(TEXT);
+        instanceNameInput.setHintTextColor(MUTED);
+        instanceNameInput.setHint("Ex.: Survival 1.12.2");
+        instanceNameInput.setPadding(dp(12), 0, dp(12), 0);
+        instanceNameInput.setBackground(roundRect(BACKGROUND, 12, BORDER, 1));
+        LinearLayout.LayoutParams instanceNameParams = params(-1, dp(50));
+        instanceNameParams.topMargin = dp(8);
+        versionsCard.addView(instanceNameInput, instanceNameParams);
+
+        TextView creationFlowNote = text(
+                "Escolha a versão do Minecraft acima e depois selecione o modloader. "
+                        + "O motor integrado instala os componentes compatíveis antes de iniciar o jogo.",
+                13, MUTED, false);
+        LinearLayout.LayoutParams creationFlowNoteParams = params(-1, -2);
+        creationFlowNoteParams.topMargin = dp(8);
+        versionsCard.addView(creationFlowNote, creationFlowNoteParams);
+
+        Button createVersionButton = primaryButton("CRIAR VERSÃO E BAIXAR", true);
+        LinearLayout.LayoutParams createVersionParams = params(-1, dp(50));
+        createVersionParams.topMargin = dp(10);
+        versionsCard.addView(createVersionButton, createVersionParams);
+        createVersionButton.setOnClickListener(v -> createLocalInstance());
+
         metadataButton = button("VER METADADOS DA VERSÃO", true);
         LinearLayout.LayoutParams metadataParams = params(-1, dp(50));
         metadataParams.topMargin = dp(8);
@@ -379,38 +406,19 @@ public final class MainActivity extends Activity {
         navInstances.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, instancesCard.getTop() - dp(12))));
         instancesCard.addView(text("INSTÂNCIAS LOCAIS", 12, EMERALD, true));
         TextView instancesNote = text(
-                "Crie perfis separados com pastas para mods, saves, configurações e logs. "
-                        + "Isso ainda não baixa o jogo nem instala o loader escolhido.",
+                "Perfis locais auxiliares para organizar mods, saves, configurações e logs. "
+                        + "O jogo é instalado e executado pelo motor integrado quando disponível.",
                 13, MUTED, false);
         LinearLayout.LayoutParams instancesNoteParams = params(-1, -2);
         instancesNoteParams.topMargin = dp(8);
         instancesCard.addView(instancesNote, instancesNoteParams);
 
-        instanceNameInput = new EditText(this);
-        instanceNameInput.setSingleLine(true);
-        instanceNameInput.setTextSize(15);
-        instanceNameInput.setTextColor(TEXT);
-        instanceNameInput.setHintTextColor(MUTED);
-        instanceNameInput.setHint("Nome da instância (ex.: Survival 1.12.2)");
-        instanceNameInput.setPadding(dp(12), 0, dp(12), 0);
-        instanceNameInput.setBackground(roundRect(BACKGROUND, 12, BORDER, 1));
-        LinearLayout.LayoutParams instanceNameParams = params(-1, dp(50));
-        instanceNameParams.topMargin = dp(12);
-        instancesCard.addView(instanceNameInput, instanceNameParams);
-
-        TextView creationFlowNote = text(
-                "O assistente vai pedir primeiro a versão do Minecraft e depois o modloader. "
-                        + "No motor integrado, o instalador nativo baixa os componentes necessários.",
+        TextView instancesHint = text(
+                "As instalações do motor aparecem no launcher integrado. Esta área organiza os perfis locais auxiliares do projeto.",
                 13, MUTED, false);
-        LinearLayout.LayoutParams creationFlowNoteParams = params(-1, -2);
-        creationFlowNoteParams.topMargin = dp(10);
-        instancesCard.addView(creationFlowNote, creationFlowNoteParams);
-
-        Button createInstanceButton = primaryButton("CRIAR VERSÃO E BAIXAR", true);
-        LinearLayout.LayoutParams createInstanceParams = params(-1, dp(50));
-        createInstanceParams.topMargin = dp(10);
-        instancesCard.addView(createInstanceButton, createInstanceParams);
-        createInstanceButton.setOnClickListener(v -> createLocalInstance());
+        LinearLayout.LayoutParams instancesHintParams = params(-1, -2);
+        instancesHintParams.topMargin = dp(8);
+        instancesCard.addView(instancesHint, instancesHintParams);
 
         TextView existingLabel = text("Instâncias salvas neste aparelho", 14, TEXT, true);
         LinearLayout.LayoutParams existingLabelParams = params(-1, -2);
@@ -508,7 +516,7 @@ public final class MainActivity extends Activity {
             refreshInstancesList();
         } catch (Exception exception) {
             instancesOutput.setText("Gerenciador de instâncias indisponível: " + safeExceptionMessage(exception));
-            createInstanceButton.setEnabled(false);
+            createVersionButton.setEnabled(false);
             deleteInstanceButton.setEnabled(false);
             if (stageVanillaButton != null) stageVanillaButton.setEnabled(false);
             if (diagnoseInstanceButton != null) diagnoseInstanceButton.setEnabled(false);
@@ -1049,7 +1057,6 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "O gerenciador de versões não está disponível.", Toast.LENGTH_LONG).show();
             return;
         }
-
         String name = instanceNameInput.getText().toString().trim();
         if (name.isEmpty()) {
             instanceNameInput.setError("Digite um nome para a versão");
@@ -1057,49 +1064,13 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "Digite o nome da versão antes de continuar.", Toast.LENGTH_LONG).show();
             return;
         }
-
-        List<String> availableVersions = new ArrayList<>();
-        android.widget.SpinnerAdapter currentAdapter = versionSpinner.getAdapter();
-        if (currentAdapter != null) {
-            for (int i = 0; i < currentAdapter.getCount(); i++) {
-                Object value = currentAdapter.getItem(i);
-                if (value != null) availableVersions.add(String.valueOf(value));
-            }
-        }
-        if (availableVersions.isEmpty()) {
-            Toast.makeText(this, "Abra a aba Versões, consulte o manifesto oficial e tente novamente.", Toast.LENGTH_LONG).show();
+        Object selected = versionSpinner.getSelectedItem();
+        String version = selected == null ? "" : String.valueOf(selected).trim();
+        if (version.isEmpty() || !version.matches("[A-Za-z0-9._-]{1,100}")) {
+            Toast.makeText(this, "Primeiro consulte o manifesto oficial e selecione uma versão do Minecraft.", Toast.LENGTH_LONG).show();
             return;
         }
-
-        Spinner versionChoice = new Spinner(this);
-        ArrayAdapter<String> versionChoiceAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, availableVersions);
-        versionChoiceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        versionChoice.setAdapter(versionChoiceAdapter);
-        Object currentlySelected = versionSpinner.getSelectedItem();
-        int defaultIndex = availableVersions.indexOf(currentlySelected == null ? "" : String.valueOf(currentlySelected));
-        if (defaultIndex >= 0) versionChoice.setSelection(defaultIndex);
-
-        LinearLayout versionDialogContent = new LinearLayout(this);
-        versionDialogContent.setOrientation(LinearLayout.VERTICAL);
-        versionDialogContent.setPadding(dp(20), dp(8), dp(20), dp(8));
-        versionDialogContent.addView(text("ETAPA 1 DE 2", 11, EMERALD, true));
-        versionDialogContent.addView(text("Escolha primeiro a versão exata do Minecraft.", 14, MUTED, false));
-        versionDialogContent.addView(versionChoice, params(-1, dp(52)));
-
-        new AlertDialog.Builder(this)
-                .setTitle("Criar versão — Minecraft")
-                .setView(versionDialogContent)
-                .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
-                .setPositiveButton("PRÓXIMO", (dialog, which) -> {
-                    Object chosen = versionChoice.getSelectedItem();
-                    if (chosen == null) {
-                        Toast.makeText(this, "Selecione uma versão válida.", Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    showLoaderChoiceDialog(name, String.valueOf(chosen));
-                })
-                .show();
+        showLoaderChoiceDialog(name, version);
     }
 
     private void showLoaderChoiceDialog(String name, String version) {
@@ -1120,10 +1091,7 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this)
                 .setTitle("Escolha o modloader")
                 .setView(loaderDialogContent)
-                .setNegativeButton("VOLTAR", (dialog, which) -> {
-                    dialog.dismiss();
-                    createLocalInstance();
-                })
+                .setNegativeButton("CANCELAR", (dialog, which) -> dialog.dismiss())
                 .setPositiveButton("CRIAR E BAIXAR", (dialog, which) ->
                         createAndInstallVersion(name, version, String.valueOf(loaderChoice.getSelectedItem())))
                 .show();
