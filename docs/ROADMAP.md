@@ -68,10 +68,20 @@ O trabalho é feito por etapas. Uma etapa só é considerada concluída quando e
 
 ## Etapa 5 — Contas, estabilidade e desempenho
 
-- [ ] Revisar autenticação, armazenamento de sessão e mensagens de erro.
-- [ ] Adicionar diagnóstico de falhas e logs acessíveis.
-- [ ] Ajustar memória, resolução e renderizador com limites seguros para cada aparelho.
-- [ ] Testar em aparelho físico, incluindo Samsung Galaxy A12, sem prometer FPS não medido.
+**Estado: diagnóstico seguro e log local de falha adicionados; validação em aparelho ainda pendente.**
+
+- [x] Adicionar captura limitada de exceções não tratadas do launcher, mantendo o handler original do Android.
+- [x] Adicionar visualização da última falha e cópia do relatório.
+- [x] Adicionar cópia de diagnóstico sem incluir intencionalmente dados de sessão/autenticação.
+- [x] Documentar limites e trabalho restante em [ACCOUNTS-STABILITY-PERFORMANCE.md](ACCOUNTS-STABILITY-PERFORMANCE.md).
+- [x] Incluir as novas classes no workflow de integração do motor.
+- [ ] Validar compilação Java no GitHub Actions sem gerar APK.
+- [ ] Confirmar logs e filtragem no aparelho físico.
+- [ ] Confirmar o fluxo de autenticação oficial no motor; não guardar tokens no dashboard nem nos logs.
+- [ ] Aplicar RAM e renderizador através das APIs reais do motor e verificar limites seguros.
+- [ ] Medir inicialização, memória e FPS de forma repetível no Galaxy A12; não afirmar resultados não medidos.
+
+**Critério de conclusão:** código validado, diagnóstico verificado no dispositivo e configurações de desempenho realmente aplicadas e medidas.
 
 ## Regras de validação
 
