@@ -197,6 +197,17 @@ jobs:
               if count != 1:
                   raise SystemExit("Could not replace visible string: " + name)
           strings_path.write_text(value)
+
+          tools_path = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/Tools.java")
+          tools_content = tools_path.read_text()
+          old_app_name = 'public static String APP_NAME = "Amethyst";'
+          if tools_content.count(old_app_name) != 1:
+              raise SystemExit("Could not replace the engine's visible application name")
+          tools_path.write_text(tools_content.replace(
+              old_app_name,
+              'public static String APP_NAME = "Mikael Launcher Plus";',
+              1
+          ))
           PY
 
           # Forward the selected version through the engine's required storage bootstrap.
