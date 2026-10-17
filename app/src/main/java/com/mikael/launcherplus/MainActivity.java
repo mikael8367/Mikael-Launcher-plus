@@ -160,6 +160,14 @@ public final class MainActivity extends Activity {
         versionsButton.setOnClickListener(v -> loadOfficialVersions());
 
         versionSpinner = new Spinner(this);
+        versionSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (updatingVersionControls || position < 0 || position >= visibleVersionIds.size()) return;
+                getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
+                        .putString("selected_version", visibleVersionIds.get(position)).apply();
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+        });
         LinearLayout.LayoutParams spinnerParams = params(-1, dp(50));
         spinnerParams.topMargin = dp(12);
         versionsCard.addView(versionSpinner, spinnerParams);
