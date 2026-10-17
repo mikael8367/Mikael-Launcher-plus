@@ -239,6 +239,8 @@ public final class VanillaLibraryInstaller {
         } catch (DownloadCancelledException e) {
             savePartial(instanceName, version, recordedMetadataSha1, verifiedCount, libraries.size(), totalBytes);
             throw e;
+        } catch (JSONException e) {
+            throw new IOException("Não foi possível criar o manifesto verificado de bibliotecas.", e);
         } finally {
             deleteTempQuietly(manifestTemp);
         }
