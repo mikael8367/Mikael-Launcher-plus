@@ -262,6 +262,9 @@ public final class VanillaAssetInstaller {
                         + (requiredSpace / (1024L * 1024L)) + " MiB para assets, além de uma reserva de segurança de 16 MiB.");
             }
 
+            // Partial progress after this point counts only completed work, not the preflight scan.
+            verifiedObjectCount = 0;
+            verifiedLogicalCount = 0;
             long workCompleted = 0;
             for (AssetObject asset : uniqueObjects.values()) {
                 checkCancelled(listener);
@@ -612,14 +615,17 @@ public final class VanillaAssetInstaller {
 
     private void checkCancelled(ProgressListener listener) throws DownloadCancelledException {
         if (Thread.currentThread().isInterrupted()
-                || Thread.currentThread().isInterrupted()
                 || listener != null && listener.isCancelled()) {
             throw new DownloadCancelledException();
         }
     }
 
     private void reportProgress(ProgressListener listener, String phase, long complete, long total) {
-        if (listener != null) listener.onProgress(phase, complete, total);
+        if (listener == null) return;
+        long interval = Math.max(1L, total / 100L);
+        if (complete == 0 || complete >= total || complete % interval == 0) {
+            listener.onProgress(phase, complete, total);
+        }
     }
 
     private long safeAdd(long first, long second) throws IOException {
