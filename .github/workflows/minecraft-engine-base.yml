@@ -404,6 +404,7 @@ jobs:
           source = launcher_path.read_text()
           
           extra_imports = [
+              "import android.content.Intent;",
               "import android.widget.LinearLayout;",
               "import android.widget.ProgressBar;",
               "import android.widget.TextView;",
