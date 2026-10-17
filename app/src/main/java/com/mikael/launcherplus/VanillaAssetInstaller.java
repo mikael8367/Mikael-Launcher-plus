@@ -15,12 +15,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.CancellationException;
 
 /**
  * Downloads and verifies the official Minecraft asset index and its content-addressed assets.
@@ -180,7 +178,7 @@ public final class VanillaAssetInstaller {
                 throw new IOException("O índice de assets está vazio ou excede o limite de entradas.");
             }
 
-            Enumeration<String> keys = objects.keys();
+            Iterator<String> keys = objects.keys();
             while (keys.hasMoreElements()) {
                 checkCancelled(listener);
                 String logicalPath = keys.nextElement();
