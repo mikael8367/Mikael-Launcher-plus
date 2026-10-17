@@ -52,10 +52,19 @@ O trabalho é feito por etapas. Uma etapa só é considerada concluída quando e
 
 ## Etapa 4 — Loaders e mods
 
+**Estado: análise estática de mods adicionada; instalações reais dos loaders ainda pendentes.**
+
+- [x] Adicionar análise offline de JARs e leitura dos metadados comuns Fabric/Forge.
+- [x] Detectar IDs duplicados quando os metadados permitem e dependências declaradas não encontradas.
+- [x] Recusar JARs com conteúdo SHA-256 idêntico já importado, mesmo com outro nome.
+- [x] Documentar limites e próximos passos em [LOADERS-AND-MODS.md](LOADERS-AND-MODS.md).
+- [ ] Validar compilação Java no GitHub Actions sem empacotar APK.
 - [ ] Implementar instalações reais e compatíveis de Forge, Fabric e OptiFine.
-- [ ] Fazer os mods da instância aparecerem na pasta ativa do jogo.
-- [ ] Validar duplicados, dependências e incompatibilidades.
-- [ ] Testar primeiro com poucos mods antes de packs maiores.
+- [ ] Fazer os mods da instância aparecerem na pasta de jogo ativa usada pelo motor.
+- [ ] Melhorar a verificação completa de intervalos de versão, dependências e conflitos por loader.
+- [ ] Testar Vanilla, um loader por vez e poucos mods no aparelho antes de packs maiores.
+
+**Critério de conclusão:** loader instalado na versão-base correta, mods lidos pelo diretório de jogo ativo e teste real concluído. O relatório estático, sozinho, não comprova compatibilidade.
 
 ## Etapa 5 — Contas, estabilidade e desempenho
 
