@@ -1809,10 +1809,31 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "Escolha uma versão oficial válida antes de iniciar.", Toast.LENGTH_LONG).show();
             return;
         }
-        if (MinecraftEngineBridge.openInstalledEngine(this, requestedVersion)) {
+        SharedPreferences accountPreferences = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
+        String accountType = accountPreferences.getString("preferred_account_type", "Offline (nome de jogador)");
+        if (!"Offline (nome de jogador)".equals(accountType)) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Tipo de conta não suportado")
+                    .setMessage("O login Microsoft e ely.by ainda não está integrado. Selecione Offline e crie um nome de jogador para continuar.")
+                    .setPositiveButton("Abrir contas", (dialog, which) -> showAccountManager())
+                    .setNegativeButton("Cancelar", null)
+                    .show();
+            return;
+        }
+        String offlineUsername = accountPreferences.getString("offline_username", "").trim();
+        if (!offlineUsername.matches("[A-Za-z0-9_]{3,16}")) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Crie seu perfil offline")
+                    .setMessage("Selecionar o tipo Offline não cria o nome de jogador. Crie e salve um perfil offline antes de iniciar Minecraft.")
+                    .setPositiveButton("Criar perfil", (dialog, which) -> showCreateOfflineAccountDialog())
+                    .setNegativeButton("Cancelar", null)
+                    .show();
+            return;
+        }
+        if (MinecraftEngineBridge.openInstalledEngine(this, requestedVersion, offlineUsername)) {
             Toast.makeText(this,
                     "Pedido enviado ao motor para iniciar Minecraft " + requestedVersion
-                            + ". Na primeira execução, o download e a autenticação podem ser necessários.",
+                            + " com o perfil offline " + offlineUsername + ". A inicialização real ainda precisa ser confirmada no aparelho.",
                     Toast.LENGTH_LONG).show();
             return;
         }
