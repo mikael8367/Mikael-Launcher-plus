@@ -83,6 +83,22 @@ O trabalho é feito por etapas. Uma etapa só é considerada concluída quando e
 
 **Critério de conclusão:** código validado, diagnóstico verificado no dispositivo e configurações de desempenho realmente aplicadas e medidas.
 
+## Etapa 6 — integridade e prontidão da instância
+
+**Estado: diagnóstico de integridade implementado parcialmente; compilação e teste em aparelho pendentes.**
+
+- [x] Adicionar o botão **Verificar integridade da instância**.
+- [x] Validar o perfil local, a correspondência entre versão selecionada e preparada, e a presença do JSON e do JAR do cliente.
+- [x] Recalcular SHA-1 dos artefatos e comparar metadados, tamanho e hash declarado do cliente.
+- [x] Mostrar os bloqueios restantes sem marcar o jogo como instalado ou jogável.
+- [x] Incluir a classe de diagnóstico no workflow de validação do código integrado ao motor.
+- [ ] Confirmar que a compilação Java volta a passar depois da correção do erro em `MainActivity.java`.
+- [ ] Adicionar testes de regressão para arquivos ausentes, alterados, truncados e versão divergente.
+- [ ] Validar o diagnóstico em aparelho físico; verificar que ele não altera nem corrompe instâncias.
+- [ ] Completar o download de bibliotecas/assets/runtime e conectar a instância ao diretório real do motor.
+
+**Limite explícito:** mesmo que o JSON e o JAR do cliente sejam verificados, a checagem sempre informa que a instância não está pronta para iniciar enquanto as dependências de execução e a ligação ao diretório do motor não estiverem implementadas e testadas.
+
 ## Regras de validação
 
 - **Sem APK sem autorização explícita.**
