@@ -211,26 +211,6 @@ jobs:
               "import android.os.Bundle;\\nimport android.os.Handler;\\nimport android.os.Looper;\\n",
               1
           )
-          extra_imports = [
-              "import android.widget.LinearLayout;",
-              "import android.widget.ProgressBar;",
-              "import android.widget.TextView;",
-              "import androidx.appcompat.app.AlertDialog;",
-              "import net.kdt.pojavlaunch.modloaders.FabricVersion;",
-              "import net.kdt.pojavlaunch.modloaders.FabriclikeDownloadTask;",
-              "import net.kdt.pojavlaunch.modloaders.FabriclikeUtils;",
-              "import net.kdt.pojavlaunch.modloaders.ForgeDownloadTask;",
-              "import net.kdt.pojavlaunch.modloaders.ForgeUtils;",
-              "import net.kdt.pojavlaunch.modloaders.ModloaderDownloadListener;",
-              "import net.kdt.pojavlaunch.modloaders.NeoForgeDownloadTask;",
-              "import net.kdt.pojavlaunch.modloaders.OptiFineDownloadTask;",
-              "import net.kdt.pojavlaunch.modloaders.OptiFineUtils;",
-              "import java.io.FileInputStream;"
-          ]
-          package_end = text.find("\\n")
-          missing_imports = [item for item in extra_imports if item not in text]
-          if missing_imports:
-              text = text[:package_end + 1] + "\\n" + "\\n".join(missing_imports) + "\\n" + text[package_end + 1:]
           field_anchor = "    private mcAccountSpinner mAccountSpinner;"
           fields = (
               "    private String mikaelRequestedVersion;\n"
@@ -241,7 +221,6 @@ jobs:
               "    private int mikaelLoaderNavigationAttempts;\n"
               "    private boolean mikaelPendingInstallResumeScheduled;\n"
               "    private int mikaelPendingInstallAttempts;\n"
-              "    private AlertDialog mikaelInstallProgressDialog;\\n"
               + field_anchor
           )
           if text.count(field_anchor) != 1:
