@@ -328,15 +328,15 @@ public final class MainActivity extends Activity {
                 JSONObject client = downloads == null ? null : downloads.optJSONObject("client");
                 JSONObject javaVersion = version.optJSONObject("javaVersion");
                 result = "Versão: " + version.optString("id", selected)
-                        + "\\nTipo: " + version.optString("type", "não informado")
-                        + "\\nData: " + version.optString("releaseTime", "não informada")
-                        + "\\nJava requerida: " + (javaVersion == null ? "não informada" : javaVersion.optString("majorVersion", "não informada"))
-                        + "\\nArquivo client: " + (client == null ? "não disponível" : client.optString("url", "não disponível"))
-                        + "\\nSHA-1: " + (client == null ? "não disponível" : client.optString("sha1", "não disponível"))
-                        + "\\n\nOs metadados foram consultados. O download/lançamento do jogo ainda não está implementado.";
+                        + "\nTipo: " + version.optString("type", "não informado")
+                        + "\nData: " + version.optString("releaseTime", "não informada")
+                        + "\nJava requerida: " + (javaVersion == null ? "não informada" : javaVersion.optString("majorVersion", "não informada"))
+                        + "\nArquivo client: " + (client == null ? "não disponível" : client.optString("url", "não disponível"))
+                        + "\nSHA-1: " + (client == null ? "não disponível" : client.optString("sha1", "não disponível"))
+                        + "\n\nOs metadados foram consultados. O download/lançamento do jogo ainda não está implementado.";
             } catch (Exception exception) {
                 String message = exception.getMessage();
-                result = "Não foi possível obter os metadados da versão.\\n"
+                result = "Não foi possível obter os metadados da versão.\n"
                         + (message == null ? exception.getClass().getSimpleName() : message);
             } finally {
                 if (connection != null) connection.disconnect();
