@@ -1,0 +1,56 @@
+# Mikael Launcher Plus — etapas de implementação
+
+O trabalho é feito por etapas. Uma etapa só é considerada concluída quando existe evidência verificável; preparar código ou compilar classes não prova que o jogo iniciou.
+
+## Etapa 1 — Preparar e validar a integração do motor
+
+**Estado: preparada no repositório; validação ainda pendente.**
+
+- [x] Fixar uma revisão específica do motor Android Amethyst para tornar a integração reproduzível.
+- [x] Preparar a cópia da interface Mikael e dos gerenciadores locais para o módulo Android do motor.
+- [x] Preparar a alteração da atividade inicial para abrir o dashboard Mikael dentro do app do motor.
+- [x] Configurar o workflow manual com modo padrão `validate`, que compila as classes Java integradas sem empacotar APK.
+- [ ] Executar o modo `validate` e corrigir erros encontrados.
+- [ ] Só depois de autorização explícita, gerar o APK de teste.
+- [ ] Instalar e abrir em um aparelho Android; comprovar que a interface abre e que o motor inicia corretamente.
+
+**Critério de conclusão:** integração Java validada, app instalado e aberto em aparelho físico. A etapa ainda não comprova que Minecraft Vanilla carrega um mundo.
+
+## Etapa 2 — Comprovar Minecraft Vanilla
+
+- [ ] Selecionar uma versão legítima no motor.
+- [ ] Confirmar download dos arquivos e runtime compatível.
+- [ ] Autenticar por um fluxo suportado pelo motor.
+- [ ] Iniciar o jogo, entrar em um mundo e guardar logs da execução.
+- [ ] Registrar aparelho, Android, versão do Minecraft e resultado.
+
+**Critério de conclusão:** mundo Vanilla jogável carregado com evidência de teste.
+
+## Etapa 3 — Instalação real por instância
+
+- [ ] Conectar perfis Mikael às pastas de jogo realmente usadas pelo motor.
+- [ ] Instalar bibliotecas e arquivos oficiais com verificação de tamanho/hash.
+- [ ] Persistir progresso, erros e capacidade de retomar downloads.
+- [ ] Não marcar perfis como instalados antes de verificar os arquivos.
+
+## Etapa 4 — Loaders e mods
+
+- [ ] Implementar instalações reais e compatíveis de Forge, Fabric e OptiFine.
+- [ ] Fazer os mods da instância aparecerem na pasta ativa do jogo.
+- [ ] Validar duplicados, dependências e incompatibilidades.
+- [ ] Testar primeiro com poucos mods antes de packs maiores.
+
+## Etapa 5 — Contas, estabilidade e desempenho
+
+- [ ] Revisar autenticação, armazenamento de sessão e mensagens de erro.
+- [ ] Adicionar diagnóstico de falhas e logs acessíveis.
+- [ ] Ajustar memória, resolução e renderizador com limites seguros para cada aparelho.
+- [ ] Testar em aparelho físico, incluindo Samsung Galaxy A12, sem prometer FPS não medido.
+
+## Regras de validação
+
+- **Sem APK sem autorização explícita.**
+- Compilar código não prova que o jogo abre.
+- Um botão funcional não prova que o Minecraft inicia.
+- Nenhum recurso é considerado concluído sem testes adequados.
+- Preservar licenças e avisos do motor e de suas dependências.
