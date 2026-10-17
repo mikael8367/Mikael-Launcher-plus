@@ -2,6 +2,29 @@
 
 Launcher Android para Minecraft: Java Edition. Este repositório está na fase inicial de integração e validação do motor Android.
 
+## Organização da interface
+
+A navegação inferior separa as funções em quatro áreas, pensadas para telas pequenas:
+
+1. **Início** — versão selecionada e acesso ao fluxo de teste do motor.
+2. **Versões** — manifesto oficial, pesquisa/seleção e metadados de versões.
+3. **Instâncias** — perfis locais e arquivos de mods associados ao perfil selecionado.
+4. **Ajustes** — RAM/renderizador preferidos, idioma, tipo de conta e diagnóstico do dispositivo.
+
+**Importante:** uma opção visível não é prova de integração completa. Preferências de RAM/renderizador/idioma e o tipo de conta ainda precisam ser conectados ao motor para produzir efeito real; escolher Microsoft ou ely.by não autentica a conta por si só. Os arquivos de mods ficam armazenados nos perfis e ainda não são carregados pelo jogo.
+
+## Mapa do código
+
+- `app/src/main/java/com/mikael/launcherplus/MainActivity.java` — interface e coordenação das ações do dashboard.
+- `InstanceManager.java` — criação, seleção e gerenciamento de instâncias locais.
+- `InstanceModManager.java` e `ModCompatibilityChecker.java` — armazenamento e análise estática dos mods.
+- `VanillaAssetInstaller.java`, `VanillaLibraryInstaller.java` e `VersionArtifactInstaller.java` — preparação/verificação de componentes Vanilla.
+- `InstanceReadinessChecker.java` — diagnóstico de prontidão; não substitui um teste real de inicialização.
+- `DiagnosticLogManager.java` — relatório e registro de falhas.
+- `.github/workflows/` — validação Android e validação manual da integração do motor.
+- `docs/` — critérios de aceite, procedimentos de teste e backlog de implementação.
+
+
 ## Estado atual
 
 - [x] Consulta do manifesto oficial da Mojang, com seleção de releases estáveis e consulta de metadados da versão (tipo, data, versão de Java, URL e SHA-1 do client).
