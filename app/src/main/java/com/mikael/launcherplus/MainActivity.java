@@ -250,6 +250,56 @@ public final class MainActivity extends Activity {
         refreshDevice.setOnClickListener(v -> refreshDeviceDiagnostics());
         refreshDeviceDiagnostics();
 
+        LinearLayout settingsCard = new LinearLayout(this);
+        settingsCard.setOrientation(LinearLayout.VERTICAL);
+        settingsCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        settingsCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        LinearLayout.LayoutParams settingsCardParams = params(-1, -2);
+        settingsCardParams.topMargin = dp(14);
+        page.addView(settingsCard, settingsCardParams);
+        settingsCard.addView(text("PREFERÊNCIAS DO LAUNCHER", 12, EMERALD, true));
+        TextView settingsNote = text("As preferências são salvas no aparelho, mas ainda não são aplicadas ao Minecraft até a integração do motor.", 13, MUTED, false);
+        LinearLayout.LayoutParams settingsNoteParams = params(-1, -2);
+        settingsNoteParams.topMargin = dp(8);
+        settingsCard.addView(settingsNote, settingsNoteParams);
+
+        settingsCard.addView(text("Limite de RAM preferido", 15, TEXT, true));
+        Spinner ramSpinner = new Spinner(this);
+        String[] ramOptions = {"512 MB", "768 MB", "1024 MB", "1280 MB", "1536 MB", "2048 MB"};
+        ArrayAdapter<String> ramAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, ramOptions);
+        ramAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        ramSpinner.setAdapter(ramAdapter);
+        LinearLayout.LayoutParams ramParams = params(-1, dp(48));
+        ramParams.topMargin = dp(4);
+        settingsCard.addView(ramSpinner, ramParams);
+
+        LinearLayout.LayoutParams rendererLabelParams = params(-1, -2);
+        rendererLabelParams.topMargin = dp(10);
+        TextView rendererLabel = text("Renderizador preferido", 15, TEXT, true);
+        settingsCard.addView(rendererLabel, rendererLabelParams);
+        Spinner rendererSpinner = new Spinner(this);
+        String[] renderers = {"GL4ES (recomendado para compatibilidade)", "Zink (experimental)", "VirGL (experimental)"};
+        ArrayAdapter<String> rendererAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, renderers);
+        rendererAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        rendererSpinner.setAdapter(rendererAdapter);
+        LinearLayout.LayoutParams rendererParams = params(-1, dp(48));
+        settingsCard.addView(rendererSpinner, rendererParams);
+
+        SharedPreferences preferences = getSharedPreferences("launcher_preferences", MODE_PRIVATE);
+        ramSpinner.setSelection(Math.max(0, Math.min(ramOptions.length - 1, preferences.getInt("preferred_ram_index", 2))));
+        rendererSpinner.setSelection(Math.max(0, Math.min(renderers.length - 1, preferences.getInt("preferred_renderer_index", 0))));
+        android.widget.AdapterView.OnItemSelectedListener savePreferences = new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                preferences.edit().putInt("preferred_ram_index", ramSpinner.getSelectedItemPosition())
+                        .putInt("preferred_ram_mb", Integer.parseInt(ramOptions[ramSpinner.getSelectedItemPosition()].replace(" MB", "")))
+                        .putInt("preferred_renderer_index", rendererSpinner.getSelectedItemPosition())
+                        .putString("preferred_renderer", rendererSpinner.getSelectedItem().toString()).apply();
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+        };
+        ramSpinner.setOnItemSelectedListener(savePreferences);
+        rendererSpinner.setOnItemSelectedListener(savePreferences);
+
         TextView footer = text("Mikael Launcher Plus · versão 0.1.0 · base inicial",
                 12, MUTED, false);
         LinearLayout.LayoutParams footerParams = params(-1, -2);
