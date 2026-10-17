@@ -1,27 +1,38 @@
 # Mikael Launcher Plus
 
-Launcher Android para Minecraft: Java Edition. O projeto começa com uma base Android mínima e um pipeline reproduzível; a integração do motor de jogo será feita por etapas e validada com evidências.
+Launcher Android para Minecraft: Java Edition. Este repositório está na fase inicial de integração e validação do motor Android.
 
 ## Estado atual
 
-- [x] Repositório inicializado com documentação.
-- [ ] Aplicativo Android mínimo compilável.
-- [ ] Workflow de build no GitHub Actions.
-- [ ] Integração do motor de inicialização compatível com Android.
-- [ ] Teste real de instalação e execução do Minecraft.
+- [x] Projeto Android Java mínimo criado.
+- [x] Workflow para compilar o APK de demonstração e publicar artefato.
+- [x] Workflow separado para compilar uma base de motor Minecraft Android upstream, em revisão de compatibilidade/licenças.
+- [x] Revisão inicial do erro de CI: a action de setup do Android SDK tentava instalar o pacote legado inexistente `tools`; os workflows foram alterados para usar o SDK pré-instalado no runner e instalar as plataformas necessárias.
+- [ ] Confirmar build do APK mínimo no GitHub Actions.
+- [ ] Confirmar build do motor upstream no GitHub Actions.
+- [ ] Integrar o motor e a identidade visual Mikael em um único aplicativo.
+- [ ] Testar instalação e início de Minecraft em dispositivo físico.
+- [ ] Validar versões, loaders, contas, instâncias e mods.
 
-## Base técnica
+## Workflows
 
-A avaliação inicial considera o código aberto do PojavLauncher/Amethyst como referência para o motor Android. PojavLauncher é LGPL-3.0 e foi descontinuado no repositório original; qualquer reutilização deve preservar avisos, cumprir a licença e auditar as licenças de cada componente. Não se copia código nem se declara integração antes de uma revisão dos arquivos e da compatibilidade.
+- [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): compila o app mínimo de desenvolvimento.
+- [Minecraft engine base (Amethyst)](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/minecraft-engine-base.yml): clona o código-fonte upstream em uma revisão fixa e tenta compilar o módulo `:app_pojavlauncher:assembleDebug`. O APK produzido por este workflow é a base Amethyst upstream, não deve ser confundido com um Mikael Launcher Plus integrado e finalizado.
+
+Os artefatos de cada workflow ficam na página de execução correspondente e expiram após 14 dias.
+
+## Base técnica e licenças
+
+A base de referência é [Amethyst Android](https://github.com/AngelAuraMC/Amethyst-Android), derivado de PojavLauncher. O workflow fixa a revisão upstream `330c6eae3164df64bdc4828e946a9e62cc5169e4` para permitir reproduzir a tentativa de build. O projeto upstream usa LGPL-3.0 e contém dependências/submódulos com licenças próprias. Antes de redistribuir APKs ou incorporar código ao produto, é necessário preservar avisos, fornecer o código-fonte correspondente conforme exigido e revisar cada licença, incluindo submódulos e bibliotecas nativas.
 
 Referências:
-- https://github.com/TeamPojavLauncher/PojavLauncher
 - https://github.com/AngelAuraMC/Amethyst-Android
+- https://github.com/TeamPojavLauncher/PojavLauncher
 
-## Build
+## Critério de aceitação
 
-O workflow em `.github/workflows/android.yml` compila o APK debug e publica o APK como artefato de workflow. Um build bem-sucedido não prova que Minecraft iniciou.
+Compilar um APK é apenas uma verificação de build. A conclusão real exige instalar o APK, selecionar uma versão legítima de Minecraft, concluir os downloads, iniciar o processo do jogo, carregar um mundo e guardar logs e identificação do dispositivo. Nenhuma dessas etapas deve ser marcada como aprovada sem evidência.
 
 ## Segurança
 
-Não coloque tokens, senhas ou chaves de assinatura no repositório. Use GitHub Actions Secrets para segredos de CI. Não distribua arquivos proprietários do Minecraft; o usuário deve obter os arquivos do jogo por meios autorizados.
+Não coloque tokens, senhas ou chaves privadas no repositório. Use GitHub Actions Secrets para segredos de CI. O launcher não deve distribuir arquivos proprietários do Minecraft; o usuário deve obter os arquivos do jogo por meios autorizados.
