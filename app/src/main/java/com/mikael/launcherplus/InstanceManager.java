@@ -168,8 +168,16 @@ public final class InstanceManager {
     }
 
     private void writeJsonAtomically(File target, JSONObject json) throws IOException {
+        writeJsonAtomically(target, json.toString());
+    }
+
+    private void writeJsonAtomically(File target, JSONArray json) throws IOException {
+        writeJsonAtomically(target, json.toString());
+    }
+
+    private void writeJsonAtomically(File target, String json) throws IOException {
         File temporary = new File(target.getParentFile(), target.getName() + ".tmp");
-        byte[] bytes = json.toString(2).getBytes(StandardCharsets.UTF_8);
+        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         try (FileOutputStream output = new FileOutputStream(temporary)) {
             output.write(bytes);
             output.getFD().sync();
