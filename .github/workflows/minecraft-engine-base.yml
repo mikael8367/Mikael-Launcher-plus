@@ -105,7 +105,7 @@ jobs:
           if 'android:name="com.mikael.launcherplus.MainActivity"' in content:
               raise SystemExit("Mikael launcher activity already exists; refusing to duplicate it")
 
-          blocks = list(re.finditer(r'        <activity\\b.*?</activity>', content, re.DOTALL))
+          blocks = list(re.finditer(r'        <activity\b.*?</activity>', content, re.DOTALL))
           matches = []
           for block in blocks:
               value = block.group(0)
