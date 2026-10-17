@@ -839,6 +839,206 @@ jobs:
           
           PY
 
+      - name: Automatically install selected compatible modloader
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          
+          root = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch")
+          
+          def replace_once(source, old, new, label):
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(label + ": expected 1 match, found " + str(count))
+              return source.replace(old, new, 1)
+          
+          # Tell every native installer screen to select and install a compatible loader automatically.
+          launcher_path = root / "LauncherActivity.java"
+          launcher = launcher_path.read_text()
+          launcher = replace_once(
+              launcher,
+              'args.putBoolean("mikael_combine_forge_optifine", combine);',
+              'args.putBoolean("mikael_combine_forge_optifine", combine);\n            args.putBoolean("mikael_auto_install_loader", true);',
+              "auto-install flag on first loader screen"
+          )
+          launcher = replace_once(
+              launcher,
+              'args.putBoolean("mikael_combine_forge", true);',
+              'args.putBoolean("mikael_combine_forge", true);\n                args.putBoolean("mikael_auto_install_loader", true);',
+              "auto-install flag on OptiFine second screen"
+          )
+          launcher_path.write_text(launcher)
+          
+          # The shared Forge/OptiFine/NeoForge list page starts the best compatible child directly.
+          modlist_path = root / "fragments/ModVersionListFragment.java"
+          modlist = modlist_path.read_text()
+          modlist = replace_once(
+              modlist,
+              "    private View mRetryView;",
+              "    private View mRetryView;\n    private boolean mikaelAutoInstallTriggered;",
+              "native automatic install state"
+          )
+          modlist = replace_once(
+              modlist,
+          '''                if(versions != null) {
+                              mExpandableListView.setAdapter(createAdapter(versions, mInflater));
+                          }else{
+                              mRetryView.setVisibility(View.VISIBLE);
+                          }''',
+          '''                if (versions != null) {
+                              mExpandableListView.setAdapter(createAdapter(versions, mInflater));
+                              if (getArguments() != null
+                                      && getArguments().getBoolean("mikael_auto_install_loader", false)) {
+                                  mExpandableListView.post(this::mikaelAutoInstallCompatibleChild);
+                              }
+                          } else {
+                              mRetryView.setVisibility(View.VISIBLE);
+                          }''',
+              "start compatible native loader automatically"
+          )
+          modlist = replace_once(
+              modlist,
+          '''    @Override
+              public void onClick(View view) {''',
+          '''    private void mikaelAutoInstallCompatibleChild() {
+                  if (mikaelAutoInstallTriggered || !isAdded() || mExpandableListView == null) return;
+                  ExpandableListAdapter adapter = mExpandableListView.getExpandableListAdapter();
+                  if (adapter == null) return;
+                  String requested = getArguments() == null ? null
+                          : getArguments().getString("mikael_requested_game_version");
+                  int groupIndex = -1;
+                  if (requested != null) {
+                      for (int group = 0; group < adapter.getGroupCount(); group++) {
+                          String groupName = String.valueOf(adapter.getGroup(group));
+                          if (requested.equalsIgnoreCase(groupName)
+                                  || groupName.startsWith(requested + "-")
+                                  || requested.startsWith(groupName + "-")) {
+                              groupIndex = group;
+                              break;
+                          }
+                      }
+                  }
+                  if (groupIndex < 0 && adapter.getGroupCount() == 1) groupIndex = 0;
+                  if (groupIndex < 0) {
+                      mikaelAutoInstallTriggered = true;
+                      Toast.makeText(mExpandableListView.getContext(),
+                              "Não há versão compatível do modloader para Minecraft " + requested + ".",
+                              Toast.LENGTH_LONG).show();
+                      return;
+                  }
+                  int count = adapter.getChildrenCount(groupIndex);
+                  int childIndex = getMikaelAutoInstallChildIndex(groupIndex, count);
+                  if (count <= 0 || childIndex < 0 || childIndex >= count) {
+                      mikaelAutoInstallTriggered = true;
+                      Toast.makeText(mExpandableListView.getContext(),
+                              "O modloader não publicou uma versão compatível com Minecraft " + requested + ".",
+                              Toast.LENGTH_LONG).show();
+                      return;
+                  }
+                  mikaelAutoInstallTriggered = true;
+                  onChildClick(mExpandableListView, null, groupIndex, childIndex,
+                          adapter.getChildId(groupIndex, childIndex));
+              }
+          
+              protected int getMikaelAutoInstallChildIndex(int groupIndex, int childCount) {
+                  // Forge versions are returned oldest-to-newest by the upstream installer.
+                  return childCount - 1;
+              }
+          
+              @Override
+              public void onClick(View view) {
+                  mikaelAutoInstallTriggered = false;''',
+              "insert automatic native loader selection"
+          )
+          modlist_path.write_text(modlist)
+          
+          # Fabric/Quilt use spinners rather than the expandable-list page. Auto-press the existing install button
+          # when the selected Minecraft version's loader metadata has loaded and a compatible release is selected.
+          fabric_path = root / "fragments/FabriclikeInstallFragment.java"
+          fabric = fabric_path.read_text()
+          fabric = replace_once(
+              fabric,
+              "    private String mikaelRequestedGameVersion;",
+              "    private String mikaelRequestedGameVersion;\n    private boolean mikaelAutoInstallTriggered;\n    private int mikaelAutoInstallAttempts;",
+              "Fabriclike automatic-install state"
+          )
+          fabric = replace_once(
+              fabric,
+          '''    private void updateLoaderSpinner() {
+                  if (mLoaderVersionArray == null) return;
+                  mLoaderVersionSpinner.setAdapter(createAdapter(mLoaderVersionArray, mOnlyStableCheckbox.isChecked()));
+              }''',
+          '''    private void updateLoaderSpinner() {
+                  if (mLoaderVersionArray == null) return;
+                  mLoaderVersionSpinner.setAdapter(createAdapter(mLoaderVersionArray, mOnlyStableCheckbox.isChecked()));
+                  mikaelAutoInstallAttempts = 0;
+                  scheduleMikaelAutoInstall();
+              }
+          
+              private void scheduleMikaelAutoInstall() {
+                  if (getArguments() == null
+                          || !getArguments().getBoolean("mikael_auto_install_loader", false)
+                          || mikaelAutoInstallTriggered || mLoaderVersionSpinner == null) return;
+                  mLoaderVersionSpinner.post(() -> {
+                      if (!isAdded() || mikaelAutoInstallTriggered) return;
+                      if (mSelectedGameVersion != null && mSelectedLoaderVersion != null
+                              && mStartButton != null && mStartButton.isEnabled()) {
+                          mikaelAutoInstallTriggered = true;
+                          mStartButton.performClick();
+                          return;
+                      }
+                      if (++mikaelAutoInstallAttempts < 20) {
+                          scheduleMikaelAutoInstall();
+                      } else {
+                          Toast.makeText(requireContext(),
+                                  "Não há versão compatível de " + mFabriclikeUtils.getName()
+                                          + " para Minecraft " + mikaelRequestedGameVersion + ".",
+                                  Toast.LENGTH_LONG).show();
+                      }
+                  });
+              }''',
+              "automatically start Fabric or Quilt installer"
+          )
+          fabric_path.write_text(fabric)
+          
+          # OptiFine lists are newest-first in the upstream scraper; NeoForge's adapter explicitly reverses its list
+          # to newest-first. These overrides therefore select child zero in their filtered group.
+          optifine_path = root / "fragments/OptiFineInstallFragment.java"
+          optifine = optifine_path.read_text()
+          optifine = replace_once(
+              optifine,
+          '''    @Override
+              public Runnable createDownloadTask(Object selectedVersion, ModloaderListenerProxy listenerProxy) {''',
+          '''    @Override
+              protected int getMikaelAutoInstallChildIndex(int groupIndex, int childCount) {
+                  return 0;
+              }
+          
+              @Override
+              public Runnable createDownloadTask(Object selectedVersion, ModloaderListenerProxy listenerProxy) {''',
+              "select latest OptiFine release"
+          )
+          optifine_path.write_text(optifine)
+          
+          neoforge_path = root / "fragments/NeoForgeInstallFragment.java"
+          neoforge = neoforge_path.read_text()
+          neoforge = replace_once(
+              neoforge,
+          '''    @Override
+              public Runnable createDownloadTask(Object selectedVersion, ModloaderListenerProxy listenerProxy) {''',
+          '''    @Override
+              protected int getMikaelAutoInstallChildIndex(int groupIndex, int childCount) {
+                  return 0;
+              }
+          
+              @Override
+              public Runnable createDownloadTask(Object selectedVersion, ModloaderListenerProxy listenerProxy) {''',
+              "select latest NeoForge release"
+          )
+          neoforge_path.write_text(neoforge)
+          
+          PY
+
       - name: Validate integrated Java source without packaging APK
         if: github.event_name == 'push' || inputs.mode == 'validate'
         working-directory: upstream/Amethyst-Android
