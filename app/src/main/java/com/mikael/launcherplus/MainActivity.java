@@ -1106,7 +1106,7 @@ public final class MainActivity extends Activity {
             instanceNameInput.setText("");
             refreshInstancesList();
 
-            boolean opened = MinecraftEngineBridge.openVersionInstaller(this, version, loader);
+            boolean opened = MinecraftEngineBridge.openVersionInstaller(this, version, loader, name);
             if (opened) {
                 String message = "Versão " + version + " • " + loader
                         + "\\nO instalador do motor foi aberto. Conclua as etapas exibidas para baixar os componentes.";
