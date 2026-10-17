@@ -139,8 +139,37 @@ public final class InstanceReadinessChecker {
         if (!"Vanilla".equals(loader) && !profile.optBoolean("loaderInstalled", false)) {
             blockers.put("O perfil seleciona " + loader + ", mas esse carregador não está instalado.");
         }
+
+        boolean assetsRecorded = false;
+        String assetStatus = profile.optString("assetInstallStatus", "");
+        String assetIndexId = profile.optString("assetIndexId", "");
+        String assetIndexSha1 = profile.optString("assetIndexSha1", "").toLowerCase(Locale.ROOT);
+        long assetObjectCount = profile.optLong("assetObjectCount", 0L);
+        long assetsVerified = profile.optLong("assetObjectsVerified", -1L);
+        long logicalPathCount = profile.optLong("assetLogicalPathCount", 0L);
+        long logicalPathsVerified = profile.optLong("assetLogicalPathsVerified", -1L);
+        int mappedCopies = (profile.optBoolean("assetVirtual", false) ? 1 : 0)
+                + (profile.optBoolean("assetMapToResources", false) ? 1 : 0);
+        long expectedLogicalCopies = logicalPathCount * mappedCopies;
+        if ("assets_staged".equals(assetStatus) && profile.optBoolean("assetsInstalled", false)
+                && assetIndexId.matches("[A-Za-z0-9._-]{1,100}")
+                && !". ".equals(assetIndexId) && !"..".equals(assetIndexId)
+                && assetIndexSha1.matches("[0-9a-f]{40}")
+                && assetObjectCount > 0 && assetsVerified == assetObjectCount
+                && logicalPathsVerified == expectedLogicalCopies) {
+            File indexFile = safeChild(safeChild(instanceDirectory, "assets"),
+                    "indexes" + File.separator + assetIndexId + ".json");
+            assetsRecorded = indexFile.isFile() && indexFile.length() > 0
+                    && indexFile.length() <= 16L * 1024L * 1024L
+                    && assetIndexSha1.equals(sha1(indexFile));
+        }
+        addCheck(checks, "Assets oficiais", assetsRecorded,
+                assetsRecorded
+                        ? "O índice de assets foi revalidado e o registro confirma que todos os objetos/caminhos foram verificados no último download. Esta checagem rápida não recalcula o hash de cada objeto."
+                        : "Assets não foram totalmente instalados, o índice foi alterado/está ausente ou os totais registrados estão inconsistentes.");
+        if (!assetsRecorded) blockers.put("Baixe e verifique todos os assets oficiais desta instância.");
+
         blockers.put("Bibliotecas Minecraft ainda não foram baixadas e verificadas por esta instância.");
-        blockers.put("Assets do Minecraft ainda não foram baixados e verificados por esta instância.");
         blockers.put("Um runtime Java compatível ainda não foi associado e validado.");
         blockers.put("A instância privada ainda não está conectada ao diretório de jogo usado pelo motor Amethyst/Pojav.");
 
@@ -153,9 +182,11 @@ public final class InstanceReadinessChecker {
         result.put("metadataVerified", metadataValid);
         result.put("clientJarVerified", clientValid);
         result.put("clientArtifactsVerified", metadataValid && clientValid && statusRecorded);
+        result.put("assetsRecordedInstalled", assetsRecorded);
         result.put("readyToLaunch", false);
         result.put("status", metadataValid && clientValid && statusRecorded && sameVersion
-                ? "client_artifacts_verified_not_playable" : "incomplete");
+                ? (assetsRecorded ? "client_and_assets_verified_not_playable"
+                    : "client_artifacts_verified_assets_pending") : "incomplete");
         result.put("checks", checks);
         result.put("blockers", blockers);
         return result;
