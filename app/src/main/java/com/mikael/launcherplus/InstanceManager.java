@@ -55,6 +55,22 @@ public final class InstanceManager {
         return new JSONArray(new String(bytes, StandardCharsets.UTF_8));
     }
 
+    public synchronized File getInstanceDirectory(String name) throws IOException, JSONException {
+        String safeName = validateName(name);
+        JSONArray instances = getInstances();
+        boolean found = false;
+        for (int i = 0; i < instances.length(); i++) {
+            if (safeName.equals(instances.getJSONObject(i).optString("name", ""))) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) throw new IllegalArgumentException("A instância selecionada não existe mais.");
+        File directory = profileDirectory(safeName);
+        if (!directory.isDirectory()) throw new IOException("A pasta da instância não existe.");
+        return directory;
+    }
+
     public synchronized JSONObject createInstance(String name, String version, String loader)
             throws IOException, JSONException {
         String safeName = validateName(name);
