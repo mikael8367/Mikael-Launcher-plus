@@ -965,7 +965,7 @@ jobs:
           fabric = replace_once(
               fabric,
           '''    private void updateLoaderSpinner() {
-                  if (mLoaderVersionArray == null) return;
+                  if(mLoaderVersionArray == null) return;
                   mLoaderVersionSpinner.setAdapter(createAdapter(mLoaderVersionArray, mOnlyStableCheckbox.isChecked()));
               }''',
           '''    private void updateLoaderSpinner() {
