@@ -7,6 +7,10 @@ import android.os.Build;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -49,6 +53,7 @@ public final class MainActivity extends Activity {
     private static final String VERSION_MANIFEST =
             "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     private static final int MAX_MANIFEST_BYTES = 4 * 1024 * 1024;
+    private static final int REQUEST_PICK_MOD_FILE = 7402;
 
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -65,6 +70,8 @@ public final class MainActivity extends Activity {
     private Spinner loaderSpinner;
     private TextView instancesOutput;
     private InstanceManager instanceManager;
+    private InstanceModManager instanceModManager;
+    private TextView modsOutput;
     private boolean updatingInstances = false;
     private String lastMetadataText = "";
     private final List<String> allVersionIds = new ArrayList<>();
@@ -332,12 +339,56 @@ public final class MainActivity extends Activity {
 
         try {
             instanceManager = new InstanceManager(this);
+            instanceModManager = new InstanceModManager(instanceManager);
             refreshInstancesList();
         } catch (Exception exception) {
             instancesOutput.setText("Gerenciador de instâncias indisponível: " + safeExceptionMessage(exception));
             createInstanceButton.setEnabled(false);
             deleteInstanceButton.setEnabled(false);
         }
+
+        LinearLayout modsCard = new LinearLayout(this);
+        modsCard.setOrientation(LinearLayout.VERTICAL);
+        modsCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        modsCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        LinearLayout.LayoutParams modsCardParams = params(-1, -2);
+        modsCardParams.topMargin = dp(14);
+        page.addView(modsCard, modsCardParams);
+        modsCard.addView(text("GERENCIADOR DE MODS", 12, EMERALD, true));
+        TextView modsNote = text(
+                "Importe arquivos JAR para a instância selecionada e remova-os quando precisar. "
+                        + "Arquivos JAR executam código: importe somente mods de fontes em que você confia. "
+                        + "Os arquivos ficam guardados no perfil; o jogo ainda não está ligado a estas pastas.",
+                13, MUTED, false);
+        LinearLayout.LayoutParams modsNoteParams = params(-1, -2);
+        modsNoteParams.topMargin = dp(8);
+        modsCard.addView(modsNote, modsNoteParams);
+
+        Button addModButton = button("IMPORTAR MOD .JAR", true);
+        LinearLayout.LayoutParams addModParams = params(-1, dp(50));
+        addModParams.topMargin = dp(12);
+        modsCard.addView(addModButton, addModParams);
+        addModButton.setOnClickListener(v -> openModPicker());
+
+        modsOutput = text("Selecione uma instância para ver os mods.", 13, MUTED, false);
+        LinearLayout.LayoutParams modsOutputParams = params(-1, -2);
+        modsOutputParams.topMargin = dp(10);
+        modsCard.addView(modsOutput, modsOutputParams);
+
+        LinearLayout modsActions = new LinearLayout(this);
+        modsActions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams modsActionsParams = params(-1, dp(48));
+        modsActionsParams.topMargin = dp(8);
+        modsCard.addView(modsActions, modsActionsParams);
+        Button refreshModsButton = button("ATUALIZAR LISTA", true);
+        Button removeModButton = button("REMOVER JAR", true);
+        modsActions.addView(refreshModsButton, new LinearLayout.LayoutParams(0, -1, 1));
+        LinearLayout.LayoutParams removeModParams = new LinearLayout.LayoutParams(0, -1, 1);
+        removeModParams.leftMargin = dp(8);
+        modsActions.addView(removeModButton, removeModParams);
+        refreshModsButton.setOnClickListener(v -> refreshModsList());
+        removeModButton.setOnClickListener(v -> chooseModToRemove());
+        refreshModsList();
 
         LinearLayout deviceCard = new LinearLayout(this);
         deviceCard.setOrientation(LinearLayout.VERTICAL);
@@ -729,6 +780,7 @@ public final class MainActivity extends Activity {
 
     private void showSelectedInstance() {
         if (instanceManager == null || instanceSpinner == null || instancesOutput == null) return;
+        refreshModsList();
         try {
             JSONArray records = instanceManager.getInstances();
             Object selected = instanceSpinner.getSelectedItem();
@@ -759,6 +811,154 @@ public final class MainActivity extends Activity {
         } catch (Exception exception) {
             instancesOutput.setText("Erro ao ler os detalhes: " + safeExceptionMessage(exception));
         }
+    }
+
+    private String selectedInstanceName() {
+        if (instanceSpinner == null || instanceSpinner.getSelectedItem() == null) return null;
+        String name = String.valueOf(instanceSpinner.getSelectedItem()).trim();
+        return name.isEmpty() ? null : name;
+    }
+
+    private void openModPicker() {
+        if (selectedInstanceName() == null || instanceModManager == null) {
+            Toast.makeText(this, "Crie ou selecione uma instância antes de importar mods.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        picker.addCategory(Intent.CATEGORY_OPENABLE);
+        picker.setType("*/*");
+        try {
+            startActivityForResult(picker, REQUEST_PICK_MOD_FILE);
+        } catch (Exception exception) {
+            Toast.makeText(this, "Não foi possível abrir o seletor de arquivos.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_PICK_MOD_FILE || resultCode != RESULT_OK
+                || data == null || data.getData() == null) return;
+        Uri uri = data.getData();
+        String fileName = queryDisplayName(uri);
+        if (fileName == null || !fileName.toLowerCase(java.util.Locale.ROOT).endsWith(".jar")) {
+            Toast.makeText(this, "Escolha um arquivo .jar de mod.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        String instanceName = selectedInstanceName();
+        if (instanceName == null || instanceModManager == null) {
+            Toast.makeText(this, "Selecione uma instância antes de importar.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final String selectedFileName = fileName;
+        new AlertDialog.Builder(this)
+                .setTitle("Importar arquivo JAR?")
+                .setMessage("Arquivo: " + selectedFileName
+                        + "\\nDestino: " + instanceName + "/mods"
+                        + "\\n\\nUm JAR pode executar código no computador/dispositivo em que é usado. Continue apenas se confiar na origem.")
+                .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Importar", (dialog, which) -> importModFile(uri, instanceName, selectedFileName))
+                .show();
+    }
+
+    private String queryDisplayName(Uri uri) {
+        try (Cursor cursor = getContentResolver().query(uri,
+                new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) return cursor.getString(index);
+            }
+        } catch (Exception ignored) { }
+        String last = uri.getLastPathSegment();
+        if (last == null) return null;
+        int separator = last.lastIndexOf('/');
+        return separator >= 0 ? last.substring(separator + 1) : last;
+    }
+
+    private void importModFile(Uri uri, String instanceName, String fileName) {
+        if (instanceModManager == null) return;
+        try {
+            InputStream stream = getContentResolver().openInputStream(uri);
+            if (stream == null) throw new java.io.IOException("O arquivo selecionado não pôde ser lido.");
+            JSONObject imported = instanceModManager.importMod(instanceName, fileName, stream);
+            refreshModsList();
+            String hash = imported.optString("sha256", "");
+            Toast.makeText(this, "Mod copiado para a instância. SHA-256: "
+                    + (hash.length() > 16 ? hash.substring(0, 16) + "…" : hash), Toast.LENGTH_LONG).show();
+        } catch (Exception exception) {
+            Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void refreshModsList() {
+        if (modsOutput == null) return;
+        String instanceName = selectedInstanceName();
+        if (instanceName == null || instanceModManager == null) {
+            modsOutput.setText("Selecione uma instância para ver os mods.");
+            return;
+        }
+        try {
+            JSONArray mods = instanceModManager.listMods(instanceName);
+            StringBuilder summary = new StringBuilder("JARs guardados nesta instância: ")
+                    .append(mods.length());
+            int shown = Math.min(mods.length(), 18);
+            for (int i = 0; i < shown; i++) {
+                JSONObject mod = mods.getJSONObject(i);
+                long mbHundredths = (mod.optLong("sizeBytes", 0) * 100L) / (1024L * 1024L);
+                summary.append("\\n• ").append(mod.optString("name", "arquivo.jar"))
+                        .append(" — ").append(mbHundredths / 100).append('.')
+                        .append(String.format(java.util.Locale.ROOT, "%02d", mbHundredths % 100))
+                        .append(" MB");
+            }
+            if (mods.length() > shown) summary.append("\\n… e mais ").append(mods.length() - shown).append(" arquivo(s).");
+            if (mods.length() == 0) summary.append("\\nNenhum JAR importado ainda.");
+            modsOutput.setText(summary.toString());
+        } catch (Exception exception) {
+            modsOutput.setText("Não foi possível listar os mods: " + safeExceptionMessage(exception));
+        }
+    }
+
+    private void chooseModToRemove() {
+        String instanceName = selectedInstanceName();
+        if (instanceName == null || instanceModManager == null) {
+            Toast.makeText(this, "Selecione uma instância primeiro.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            JSONArray mods = instanceModManager.listMods(instanceName);
+            if (mods.length() == 0) {
+                Toast.makeText(this, "Esta instância não tem arquivos JAR para remover.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String[] names = new String[mods.length()];
+            for (int i = 0; i < mods.length(); i++) names[i] = mods.getJSONObject(i).optString("name", "arquivo.jar");
+            new AlertDialog.Builder(this)
+                    .setTitle("Escolha o JAR para remover")
+                    .setItems(names, (dialog, which) -> confirmRemoveMod(instanceName, names[which]))
+                    .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+                    .show();
+        } catch (Exception exception) {
+            Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void confirmRemoveMod(String instanceName, String fileName) {
+        new AlertDialog.Builder(this)
+                .setTitle("Remover mod?")
+                .setMessage("Excluir " + fileName + " desta instância?")
+                .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Remover", (dialog, which) -> {
+                    try {
+                        if (instanceModManager != null && instanceModManager.deleteMod(instanceName, fileName)) {
+                            refreshModsList();
+                            Toast.makeText(this, "Arquivo removido da instância.", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(this, "Arquivo não encontrado.", Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (Exception exception) {
+                        Toast.makeText(this, safeExceptionMessage(exception), Toast.LENGTH_LONG).show();
+                    }
+                }).show();
     }
 
     private void confirmDeleteSelectedInstance() {
