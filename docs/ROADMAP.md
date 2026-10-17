@@ -120,6 +120,26 @@ O trabalho é feito por etapas. Uma etapa só é considerada concluída quando e
 
 **Limite explícito:** a conclusão desta etapa significa somente que os assets foram baixados e verificados. Bibliotecas, runtime Java, integração ao diretório do motor e teste real de inicialização continuam pendentes; gameInstalled e readyToLaunch permanecem falsos.
 
+## Etapa 8 — bibliotecas Java Vanilla
+
+**Estado: implementação adicionada; compilação CI após esta etapa e validação integrada ainda pendentes.**
+
+- [x] Ler a lista de bibliotecas do JSON oficial da versão já verificado.
+- [x] Aplicar as regras de plataforma usando Linux/arquitetura reportada pelo runtime e não selecionar bibliotecas para outros sistemas.
+- [x] Validar caminho relativo, HTTPS e uma lista restrita de hosts Maven permitidos.
+- [x] Exigir SHA-1 e tamanho válidos; limitar quantidade, tamanho individual e total.
+- [x] Baixar para arquivos temporários, verificar cada JAR e preservar os arquivos íntegros para novas tentativas.
+- [x] Fazer pré-checagem de espaço, progresso e cancelamento cooperativo.
+- [x] Criar manifesto local de bibliotecas, listar dependências não resolvidas e ligar o resultado ao diagnóstico da instância.
+- [x] Adicionar os controles de download/verificação ao dashboard e incluir a classe no workflow de validação sem APK.
+- [ ] Confirmar compilação Java atualizada no GitHub Actions.
+- [ ] Testar versões reais, redirecionamentos, falhas de rede, cancelamento, arquivos adulterados e espaço insuficiente.
+- [ ] Implementar resolução dos classificadores nativos correta para Amethyst/Android e validar classpath.
+- [ ] Instalar/associar runtime Java compatível e ligar diretórios de bibliotecas/assets/cliente ao diretório de jogo do motor.
+- [ ] Iniciar Minecraft e carregar um mundo no Galaxy A12.
+
+**Limite explícito:** bibliotecas Java comuns podem ser baixadas e verificadas, mas a etapa permanece parcial quando o manifesto inclui classificadores nativos ou outras condições não resolvidas. Nem a presença dos JARs nem um manifesto completo significa que a instância pode iniciar; `readyToLaunch` permanece falso.
+
 ## Regras de validação
 
 - **Sem APK sem autorização explícita.**
