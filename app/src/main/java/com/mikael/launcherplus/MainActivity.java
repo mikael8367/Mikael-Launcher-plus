@@ -374,7 +374,7 @@ public final class MainActivity extends Activity {
         instancesCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams instancesCardParams = params(-1, -2);
         instancesCardParams.topMargin = dp(14);
-        instancesCard.setTag("versoes");
+        instancesCard.setTag("instancias");
         page.addView(instancesCard, instancesCardParams);
         navInstances.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, instancesCard.getTop() - dp(12))));
         instancesCard.addView(text("INSTÂNCIAS LOCAIS", 12, EMERALD, true));
@@ -529,7 +529,7 @@ public final class MainActivity extends Activity {
         modsCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams modsCardParams = params(-1, -2);
         modsCardParams.topMargin = dp(14);
-        modsCard.setTag("versoes");
+        modsCard.setTag("instancias");
         page.addView(modsCard, modsCardParams);
         navMods.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, modsCard.getTop() - dp(12))));
         modsCard.addView(text("GERENCIADOR DE MODS", 12, EMERALD, true));
@@ -706,7 +706,7 @@ public final class MainActivity extends Activity {
         footer.setGravity(Gravity.CENTER);
         page.addView(footer, footerParams);
 
-        // O conteúdo é separado em três telas simples controladas pela navegação inferior.
+        // O conteúdo é organizado em quatro áreas: início, versões, instâncias/mods e configurações.
         for (int i = 0; i < page.getChildCount(); i++) {
             View child = page.getChildAt(i);
             if (child.getTag() == null) child.setTag("versoes");
@@ -716,11 +716,13 @@ public final class MainActivity extends Activity {
         bottomNavigation.setGravity(Gravity.CENTER);
         bottomNavigation.setPadding(dp(8), dp(8), dp(8), dp(8));
         bottomNavigation.setBackground(roundRect(SURFACE, 16, BORDER, 1));
-        Button homeTab = button("⌂  Início", true);
-        Button versionsTab = button("▣  Versões", true);
-        Button settingsTab = button("⚙  Configurações", true);
+        Button homeTab = button("⌂ Início", true);
+        Button versionsTab = button("▣ Versões", true);
+        Button instancesTab = button("▤ Instâncias", true);
+        Button settingsTab = button("⚙ Ajustes", true);
         bottomNavigation.addView(homeTab, new LinearLayout.LayoutParams(0, dp(48), 1));
         bottomNavigation.addView(versionsTab, new LinearLayout.LayoutParams(0, dp(48), 1));
+        bottomNavigation.addView(instancesTab, new LinearLayout.LayoutParams(0, dp(48), 1));
         bottomNavigation.addView(settingsTab, new LinearLayout.LayoutParams(0, dp(48), 1));
         LinearLayout.LayoutParams navParams = params(-1, dp(64));
         navParams.leftMargin = dp(10);
@@ -729,6 +731,7 @@ public final class MainActivity extends Activity {
         root.addView(bottomNavigation, navParams);
         homeTab.setOnClickListener(v -> showDashboardTab(page, "inicio"));
         versionsTab.setOnClickListener(v -> showDashboardTab(page, "versoes"));
+        instancesTab.setOnClickListener(v -> showDashboardTab(page, "instancias"));
         settingsTab.setOnClickListener(v -> showDashboardTab(page, "configuracoes"));
         showDashboardTab(page, "inicio");
         return root;
