@@ -17,6 +17,8 @@ public final class MinecraftEngineBridge {
             "com.mikael.launcherplus.extra.REQUESTED_VERSION";
     public static final String EXTRA_REQUESTED_LOADER =
             "com.mikael.launcherplus.extra.REQUESTED_LOADER";
+    public static final String EXTRA_REQUESTED_PROFILE_NAME =
+            "com.mikael.launcherplus.extra.REQUESTED_PROFILE_NAME";
 
     private static final String[] ENGINE_PACKAGES = {
             "org.angelauramc.amethyst.debug",
@@ -64,8 +66,10 @@ public final class MinecraftEngineBridge {
      * build deliberately returns false rather than pretending an external launcher has
      * understood the custom installation request.
      */
-    public static boolean openVersionInstaller(Activity activity, String requestedVersion, String loader) {
-        if (activity == null || !isValidVersion(requestedVersion) || !isValidLoader(loader)) return false;
+    public static boolean openVersionInstaller(Activity activity, String requestedVersion, String loader,
+                                                         String requestedProfileName) {
+        if (activity == null || !isValidVersion(requestedVersion) || !isValidLoader(loader)
+                || !isValidProfileName(requestedProfileName)) return false;
         String ownPackage = activity.getPackageName();
         if (!"org.angelauramc.amethyst.debug".equals(ownPackage)
                 && !"org.angelauramc.amethyst".equals(ownPackage)) {
@@ -76,12 +80,18 @@ public final class MinecraftEngineBridge {
         bootstrap.setClassName(ownPackage, "net.kdt.pojavlaunch.TestStorageActivity");
         bootstrap.putExtra(EXTRA_REQUESTED_VERSION, requestedVersion);
         bootstrap.putExtra(EXTRA_REQUESTED_LOADER, loader);
+        bootstrap.putExtra(EXTRA_REQUESTED_PROFILE_NAME, requestedProfileName.trim());
         try {
             activity.startActivity(bootstrap);
             return true;
         } catch (ActivityNotFoundException | SecurityException ignored) {
             return false;
         }
+    }
+
+    private static boolean isValidProfileName(String value) {
+        return value != null && value.trim().matches("[A-Za-z0-9][A-Za-z0-9 _.-]{0,31}")
+                && !".".equals(value.trim()) && !"..".equals(value.trim());
     }
 
     private static boolean isValidLoader(String value) {
