@@ -71,6 +71,7 @@ public final class MainActivity extends Activity {
     private TextView instancesOutput;
     private InstanceManager instanceManager;
     private InstanceModManager instanceModManager;
+    private ModCompatibilityChecker modCompatibilityChecker;
     private VersionArtifactInstaller versionArtifactInstaller;
     private Button stageVanillaButton;
     private TextView installStatusOutput;
@@ -351,6 +352,7 @@ public final class MainActivity extends Activity {
         try {
             instanceManager = new InstanceManager(this);
             instanceModManager = new InstanceModManager(instanceManager);
+            modCompatibilityChecker = new ModCompatibilityChecker(instanceManager, instanceModManager);
             versionArtifactInstaller = new VersionArtifactInstaller(instanceManager);
             refreshInstancesList();
         } catch (Exception exception) {
@@ -401,6 +403,12 @@ public final class MainActivity extends Activity {
         modsActions.addView(removeModButton, removeModParams);
         refreshModsButton.setOnClickListener(v -> refreshModsList());
         removeModButton.setOnClickListener(v -> chooseModToRemove());
+
+        Button analyzeModsButton = button("ANALISAR COMPATIBILIDADE", true);
+        LinearLayout.LayoutParams analyzeModsParams = params(-1, dp(48));
+        analyzeModsParams.topMargin = dp(8);
+        modsCard.addView(analyzeModsButton, analyzeModsParams);
+        analyzeModsButton.setOnClickListener(v -> analyzeSelectedMods());
         refreshModsList();
 
         LinearLayout deviceCard = new LinearLayout(this);
@@ -1019,6 +1027,61 @@ public final class MainActivity extends Activity {
         } catch (Exception exception) {
             modsOutput.setText("Não foi possível listar os mods: " + safeExceptionMessage(exception));
         }
+    }
+
+    private void analyzeSelectedMods() {
+        final String instanceName = selectedInstanceName();
+        if (instanceName == null || modCompatibilityChecker == null) {
+            Toast.makeText(this, "Selecione uma instância primeiro.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (modsOutput != null) modsOutput.setText("Analisando metadados dos mods…");
+        ioExecutor.execute(() -> {
+            final String reportText;
+            try {
+                JSONObject report = modCompatibilityChecker.inspect(instanceName);
+                StringBuilder summary = new StringBuilder();
+                summary.append("ANÁLISE DE MODS — ").append(instanceName)
+                        .append("\\nMinecraft: ").append(report.optString("minecraftVersion", "desconhecido"))
+                        .append(" | Loader: ").append(report.optString("loader", "Vanilla"))
+                        .append("\\nJARs: ").append(report.optInt("jarCount", 0))
+                        .append(" | Metadados reconhecidos: ").append(report.optInt("metadataRecognized", 0))
+                        .append(" | Sem metadados reconhecidos: ").append(report.optInt("metadataMissing", 0))
+                        .append("\\n");
+                org.json.JSONArray warnings = report.optJSONArray("warnings");
+                if (warnings == null || warnings.length() == 0) {
+                    summary.append("\\nNenhuma dependência ausente ou ID duplicado foi detectado pelos metadados disponíveis.");
+                } else {
+                    summary.append("\\nAVISOS (").append(warnings.length()).append("):");
+                    for (int i = 0; i < warnings.length(); i++) {
+                        summary.append("\\n• ").append(warnings.optString(i));
+                    }
+                }
+                org.json.JSONArray findings = report.optJSONArray("findings");
+                if (findings != null) {
+                    summary.append("\\n\\nARQUIVOS:");
+                    for (int i = 0; i < findings.length(); i++) {
+                        JSONObject item = findings.optJSONObject(i);
+                        if (item == null) continue;
+                        summary.append("\\n• ").append(item.optString("file", "arquivo.jar"))
+                                .append(": ").append(item.optString("status", "desconhecido"));
+                        if (item.has("modId")) {
+                            summary.append(" — ").append(item.optString("modId"))
+                                    .append(" ").append(item.optString("modVersion", ""));
+                        }
+                        String message = item.optString("message", "");
+                        if (!message.isEmpty()) summary.append(" (").append(message).append(")");
+                    }
+                }
+                summary.append("\\n\\nImportante: é uma verificação estática parcial. Não instala Forge/Fabric/OptiFine, não verifica todas as faixas de versão e não prova que o jogo iniciará.");
+                reportText = summary.toString();
+            } catch (Exception exception) {
+                reportText = "Falha na análise: " + safeExceptionMessage(exception);
+            }
+            mainHandler.post(() -> {
+                if (modsOutput != null) modsOutput.setText(reportText);
+            });
+        });
     }
 
     private void chooseModToRemove() {
