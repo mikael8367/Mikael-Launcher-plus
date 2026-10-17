@@ -1068,7 +1068,6 @@ public final class MainActivity extends Activity {
         }
         if (availableVersions.isEmpty()) {
             Toast.makeText(this, "Abra a aba Versões, consulte o manifesto oficial e tente novamente.", Toast.LENGTH_LONG).show();
-            showDashboardTab((LinearLayout) versionSpinner.getParent().getParent().getParent(), "versoes");
             return;
         }
 
@@ -1104,7 +1103,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showLoaderChoiceDialog(String name, String version) {
-        String[] loaderOptions = {"Vanilla", "Forge", "Fabric", "OptiFine", "Forge + OptiFine"};
+        String[] loaderOptions = {"Vanilla", "Forge", "Fabric", "Quilt", "NeoForge", "OptiFine", "Forge + OptiFine"};
         Spinner loaderChoice = new Spinner(this);
         ArrayAdapter<String> loaderChoiceAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, loaderOptions);
