@@ -1073,6 +1073,12 @@ jobs:
           launcher = launcher_path.read_text()
           launcher = replace_once(
               launcher,
+              'lower.startsWith(base + "-forge-")',
+              'lower.startsWith(base + "-forge")',
+              "recognize standard Forge profile id"
+          )
+          launcher = replace_once(
+              launcher,
               "    private String mikaelRequestedLoader;",
               "    private String mikaelRequestedLoader;\n    private String mikaelRequestedProfileName;",
               "profile name field"
@@ -1171,6 +1177,12 @@ jobs:
           optifine = optifine_path.read_text()
           optifine = replace_once(
               optifine,
+              'id.startsWith(base + "-forge-")',
+              'id.startsWith(base + "-forge")',
+              "recognize standard Forge profile id for OptiFine"
+          )
+          optifine = replace_once(
+              optifine,
           '''                File gameDir = Tools.getGameDirPath(forgeProfile);''',
           '''                String requestedName = getArguments() == null ? "" : getArguments().getString("mikael_requested_profile_name", "");
                           if (requestedName.matches("''' + valid_name + '''")) forgeProfile.name = requestedName.trim();
@@ -1213,42 +1225,33 @@ jobs:
           pending_line = 'String gameVersion = prefs.getString("pending_game_version", "");'
           if launcher.count(pending_line) != 1:
               raise SystemExit("Expected exactly one pending native game-version line")
-          launcher = launcher.replace(pending_line, pending_line + '\\n                      String requestedProfileName = prefs.getString("pending_profile_name", "");', 1)
-          # The current generated launcher method is in launcher before the fragments are patched in the later sections above.
-          # Re-read it because the routing source was already modified; update the pending installer branch in the same source.
-          launcher = replace_once(
-              launcher,
-          '''                          prefs.edit().remove("pending_optifine_after_forge").remove("pending_native_installer")
-                                            .remove("pending_native_loader").remove("pending_game_version").apply();
-                                    Bundle args = new Bundle();
-                                    args.putString("mikael_requested_game_version", gameVersion);
-                                    args.putBoolean("mikael_combine_forge", true);''',
-          '''                          prefs.edit().remove("pending_optifine_after_forge").remove("pending_native_installer")
-                                            .remove("pending_native_loader").remove("pending_game_version").remove("pending_profile_name").apply();
-                                    Bundle args = new Bundle();
-                                    args.putString("mikael_requested_game_version", gameVersion);
-                                    args.putString("mikael_requested_profile_name", requestedProfileName);
-                                    args.putBoolean("mikael_combine_forge", true);''',
-              "preserve name across Forge plus OptiFine"
+          launcher = launcher.replace(
+              pending_line,
+              pending_line + '\n                      String requestedProfileName = prefs.getString("pending_profile_name", "");',
+              1
           )
-          launcher = replace_once(
-              launcher,
-          '''                      LauncherPreferences.DEFAULT_PREF.edit()
-                                        .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, profileKey).apply();
-                                LauncherProfiles.write();
-                                prefs.edit().remove("pending_native_installer").remove("pending_native_loader")
-                                        .remove("pending_optifine_after_forge").remove("pending_game_version").apply();''',
-          '''                      MinecraftProfile installedProfile = LauncherProfiles.mainProfileJson.profiles.get(profileKey);
-                                if (installedProfile != null && requestedProfileName.matches("''' + valid_name + '''")) {
-                                    installedProfile.name = requestedProfileName.trim();
-                                }
-                                LauncherPreferences.DEFAULT_PREF.edit()
-                                        .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, profileKey).apply();
-                                LauncherProfiles.write();
-                                prefs.edit().remove("pending_native_installer").remove("pending_native_loader")
-                                        .remove("pending_optifine_after_forge").remove("pending_game_version")
-                                        .remove("pending_profile_name").apply();''',
-              "rename installed Forge NeoForge or OptiFine profile"
+
+          # Preserve the label for the second phase of Forge + OptiFine.
+          combo_anchor = 'args.putBoolean("mikael_combine_forge", true);'
+          if launcher.count(combo_anchor) != 1:
+              raise SystemExit("Expected exactly one Forge + OptiFine handoff")
+          launcher = launcher.replace(
+              combo_anchor,
+              'args.putString("mikael_requested_profile_name", requestedProfileName);\n                          ' + combo_anchor,
+              1
+          )
+
+          # Rename the native profile before writing its selected-profile record.
+          profile_line = 'LauncherPreferences.PREF_KEY_CURRENT_PROFILE, profileKey).apply();'
+          if launcher.count(profile_line) != 1:
+              raise SystemExit("Expected exactly one selected native profile key")
+          launcher = launcher.replace(
+              profile_line,
+              profile_line + '\n                      MinecraftProfile installedProfile = LauncherProfiles.mainProfileJson.profiles.get(profileKey);\n'
+              + '                      if (installedProfile != null && requestedProfileName != null && requestedProfileName.matches("' + valid_name + '")) {\n'
+              + '                          installedProfile.name = requestedProfileName.trim();\n'
+              + '                      }',
+              1
           )
           # Write LauncherActivity after the latest modifications.
           launcher_path.write_text(launcher)
