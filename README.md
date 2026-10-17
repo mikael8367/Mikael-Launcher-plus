@@ -40,6 +40,12 @@ O dashboard agora tem o botão **Testar Minecraft Vanilla**. Ele mostra a versã
 
 O dashboard inclui cópia de um relatório de diagnóstico do dispositivo e visualização da última falha Java registrada. O log é privado ao app, limitado a 256 KiB e filtrado para padrões comuns de segredos; revise qualquer conteúdo antes de compartilhar. Isso não captura todos os tipos de falha, nem significa que preferências de RAM/renderizador já sejam aplicadas ao motor. Consulte [a documentação da etapa 5](docs/ACCOUNTS-STABILITY-PERFORMANCE.md).
 
+## Etapa 6 — integridade e prontidão da instância
+
+O botão **Verificar integridade da instância** confere os metadados do perfil, se a versão preparada corresponde à escolhida, o JSON oficial, o SHA-1 e tamanho esperado do JAR e o hash real do arquivo local. O resultado lista os bloqueios restantes para a instalação.
+
+A verificação **não inicia o jogo nem marca a instância como jogável**. Bibliotecas, assets, runtime Java compatível e ligação da instância ao diretório real usado pelo motor continuam pendentes. A compilação e o teste no dispositivo ainda precisam ser confirmados. Consulte [a documentação da etapa 6](docs/INSTANCE-READINESS.md).
+
 ## Workflows
 
 - [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): valida a compilação do código Java e não empacota APK.
