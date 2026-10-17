@@ -18,13 +18,20 @@ O trabalho é feito por etapas. Uma etapa só é considerada concluída quando e
 
 ## Etapa 2 — Comprovar Minecraft Vanilla
 
-- [ ] Selecionar uma versão legítima no motor.
+**Estado: fluxo de orientação adicionado; teste real pendente.**
+
+- [x] Adicionar no dashboard o botão **Testar Minecraft Vanilla**.
+- [x] Mostrar a versão selecionada e explicar que ela ainda não é transferida automaticamente ao motor.
+- [x] Documentar o procedimento e as evidências necessárias em [VANILLA-TEST.md](VANILLA-TEST.md).
+- [ ] Executar a validação Java da interface atualizada sem empacotar APK.
+- [ ] Com autorização explícita, gerar o APK de teste e instalar em aparelho físico.
+- [ ] Selecionar uma versão legítima Vanilla no motor.
 - [ ] Confirmar download dos arquivos e runtime compatível.
 - [ ] Autenticar por um fluxo suportado pelo motor.
 - [ ] Iniciar o jogo, entrar em um mundo e guardar logs da execução.
 - [ ] Registrar aparelho, Android, versão do Minecraft e resultado.
 
-**Critério de conclusão:** mundo Vanilla jogável carregado com evidência de teste.
+**Critério de conclusão:** mundo Vanilla jogável carregado com evidência de teste. Abrir o motor ou compilar o código não basta.
 
 ## Etapa 3 — Instalação real por instância
 
