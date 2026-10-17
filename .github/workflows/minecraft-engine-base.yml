@@ -666,6 +666,7 @@ jobs:
               "import android.os.Handler;",
               "import android.os.Looper;",
               "import android.widget.Toast;",
+              "import net.kdt.pojavlaunch.Tools;",
               "import net.kdt.pojavlaunch.extra.ExtraConstants;",
               "import net.kdt.pojavlaunch.extra.ExtraCore;",
               "net.kdt.pojavlaunch.prefs.LauncherPreferences".join(["import ", ";"]),
