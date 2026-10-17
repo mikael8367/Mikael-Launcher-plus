@@ -69,6 +69,7 @@ public final class MainActivity extends Activity {
     private Spinner typeSpinner;
     private EditText versionSearch;
     private TextView deviceOutput;
+    private TextView selectedVersionSummary;
     private EditText instanceNameInput;
     private Spinner instanceSpinner;
     private Spinner loaderSpinner;
@@ -249,6 +250,26 @@ public final class MainActivity extends Activity {
         page.addView(play, playParams);
         play.setOnClickListener(v -> openEngineForVanillaTest());
 
+        LinearLayout selectedVersionCard = new LinearLayout(this);
+        selectedVersionCard.setOrientation(LinearLayout.VERTICAL);
+        selectedVersionCard.setPadding(dp(16), dp(14), dp(16), dp(14));
+        selectedVersionCard.setBackground(roundRect(SURFACE_RAISED, 18, BORDER, 1));
+        selectedVersionCard.setTag("inicio");
+        LinearLayout.LayoutParams selectedVersionCardParams = params(-1, -2);
+        selectedVersionCardParams.topMargin = dp(12);
+        page.addView(selectedVersionCard, selectedVersionCardParams);
+        selectedVersionCard.addView(text("VERSÃO SELECIONADA", 11, EMERALD, true));
+        selectedVersionSummary = text(getSharedPreferences("launcher_preferences", MODE_PRIVATE)
+                .getString("selected_version", "Nenhuma versão selecionada"), 17, TEXT, true);
+        LinearLayout.LayoutParams selectedSummaryParams = params(-1, -2);
+        selectedSummaryParams.topMargin = dp(6);
+        selectedVersionCard.addView(selectedVersionSummary, selectedSummaryParams);
+        Button configureVersionButton = button("CONFIGURAR VERSÃO", true);
+        LinearLayout.LayoutParams configureVersionParams = params(-1, dp(44));
+        configureVersionParams.topMargin = dp(8);
+        selectedVersionCard.addView(configureVersionButton, configureVersionParams);
+        configureVersionButton.setOnClickListener(v -> showDashboardTab(page, "versoes"));
+
         LinearLayout versionsCard = new LinearLayout(this);
         versionsCard.setOrientation(LinearLayout.VERTICAL);
         versionsCard.setPadding(dp(18), dp(18), dp(18), dp(18));
@@ -277,8 +298,10 @@ public final class MainActivity extends Activity {
         versionSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 if (updatingVersionControls || position < 0 || position >= visibleVersionIds.size()) return;
+                String selectedId = visibleVersionIds.get(position);
                 getSharedPreferences("launcher_preferences", MODE_PRIVATE).edit()
-                        .putString("selected_version", visibleVersionIds.get(position)).apply();
+                        .putString("selected_version", selectedId).apply();
+                if (selectedVersionSummary != null) selectedVersionSummary.setText(selectedId);
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
         });
@@ -806,6 +829,7 @@ public final class MainActivity extends Activity {
                     filterVersions();
                     int selected = visibleVersionIds.indexOf(saved);
                     if (selected >= 0) versionSpinner.setSelection(selected);
+                    if (selectedVersionSummary != null) selectedVersionSummary.setText(saved);
                 }
                 versionsButton.setEnabled(true);
                 versionsButton.setText("ATUALIZAR VERSÕES");
