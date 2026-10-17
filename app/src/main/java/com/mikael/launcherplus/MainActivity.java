@@ -1812,7 +1812,7 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this)
                 .setTitle("Motor do Minecraft não encontrado")
                 .setMessage("Este repositório contém a interface e a integração-fonte, mas o jogo real precisa "
-                        + "do motor Amethyst/Pojav integrado ao aplicativo. Nenhum motor compatível foi encontrado. "
+                        + "do mecanismo de Minecraft integrado ao aplicativo. Nenhum mecanismo compatível foi encontrado. "
                         + "A compilação de validação não gera APK e não comprova uma execução em aparelho.")
                 .setPositiveButton("Entendi", (dialog, which) -> dialog.dismiss())
                 .show();
