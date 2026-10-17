@@ -144,26 +144,21 @@ public final class MainActivity extends Activity {
         detailParams.topMargin = dp(10);
         statusCard.addView(detail, detailParams);
 
-        Button play = button("INICIAR MINECRAFT", true);
+        Button play = button("TESTAR MINECRAFT VANILLA", true);
         LinearLayout.LayoutParams playParams = params(-1, dp(54));
         playParams.topMargin = dp(20);
         page.addView(play, playParams);
         play.setOnClickListener(v -> {
-            if (MinecraftEngineBridge.openInstalledEngine(this)) {
-                Toast.makeText(this,
-                        "Motor aberto. No motor, entre na conta, instale/seleciona uma versão e toque em Jogar. "
-                                + "A versão desta tela ainda não é transferida automaticamente.",
-                        Toast.LENGTH_LONG).show();
-            } else {
-                new AlertDialog.Builder(this)
-                        .setTitle("Motor do Minecraft não encontrado")
-                        .setMessage("O botão agora procura e abre o motor Android Amethyst/Pojav se ele estiver instalado. "
-                                + "Este projeto ainda não inclui esse motor dentro do mesmo APK. "
-                                + "Sem o motor instalado, não é possível iniciar Minecraft a partir desta tela. "
-                                + "Nenhum APK foi gerado.")
-                        .setPositiveButton("Entendi", (dialog, which) -> dialog.dismiss())
-                        .show();
-            }
+            String selectedVersion = getSelectedVersionForVanillaTest();
+            new AlertDialog.Builder(this)
+                    .setTitle("Etapa 2 — teste Vanilla")
+                    .setMessage("Versão escolhida nesta tela: " + selectedVersion + "\\n\\n"
+                            + "Esta tela ainda consulta os metadados da Mojang, mas não instala o jogo nem transfere a versão para o motor. "
+                            + "No motor, escolha a mesma versão Vanilla, conclua a autenticação compatível, aguarde os downloads e toque em Jogar. "
+                            + "Depois, entre em um mundo e confirme que ele carrega. Mods e loaders ficam fora deste teste.")
+                    .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+                    .setPositiveButton("Abrir motor", (dialog, which) -> openEngineForVanillaTest())
+                    .show();
         });
 
         LinearLayout versionsCard = new LinearLayout(this);
@@ -992,6 +987,34 @@ public final class MainActivity extends Activity {
         String message = exception.getMessage();
         if (message == null || message.trim().isEmpty()) return exception.getClass().getSimpleName();
         return message;
+    }
+
+    private String getSelectedVersionForVanillaTest() {
+        if (versionSpinner != null) {
+            int position = versionSpinner.getSelectedItemPosition();
+            if (position >= 0 && position < visibleVersionIds.size()) {
+                return visibleVersionIds.get(position);
+            }
+        }
+        return getSharedPreferences("launcher_preferences", MODE_PRIVATE)
+                .getString("selected_version", "nenhuma versão selecionada");
+    }
+
+    private void openEngineForVanillaTest() {
+        if (MinecraftEngineBridge.openInstalledEngine(this)) {
+            Toast.makeText(this,
+                    "Motor aberto. Selecione nele a mesma versão Vanilla, instale-a e teste um mundo. "
+                            + "A versão escolhida nesta tela não é transferida automaticamente.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Motor do Minecraft não encontrado")
+                .setMessage("Não foi encontrada uma instalação compatível do motor Amethyst/Pojav. "
+                        + "O teste real de Vanilla depende da integração do motor e de um teste em aparelho. "
+                        + "Nenhum APK foi gerado.")
+                .setPositiveButton("Entendi", (dialog, which) -> dialog.dismiss())
+                .show();
     }
 
     private void addModule(LinearLayout parent, String heading, String description) {
