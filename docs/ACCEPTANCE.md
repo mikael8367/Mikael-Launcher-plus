@@ -9,7 +9,7 @@ Status possíveis: APROVADA, REPROVADA, NÃO TESTADA, NÃO IMPLEMENTADA.
 | APK instala e abre | NÃO TESTADA | Teste em dispositivo Android |
 | Preferência de versão/filtro | IMPLEMENTADA NO CÓDIGO; teste de fechar/reabrir NÃO TESTADO | Seleção salva em SharedPreferences e restaurada após reinício |
 | Manifesto real de versões | IMPLEMENTADA NO CÓDIGO; teste de rede em dispositivo NÃO TESTADO | Consultar manifesto oficial e confirmar conteúdo recebido |
-| Download e verificação de arquivos | NÃO IMPLEMENTADA | Hash/tamanho comparado com metadados oficiais |
+| Perfis locais de instância | IMPLEMENTADO NO CÓDIGO; teste funcional em Android NÃO TESTADO | Criar, fechar/reabrir, selecionar, excluir e verificar diretórios privados |\n| Download e verificação de arquivos | NÃO IMPLEMENTADA | Hash/tamanho comparado com metadados oficiais |
 | Runtime Java Android | NÃO IMPLEMENTADA | Runtime compatível instalado e executado |
 | Minecraft Vanilla inicia | NÃO IMPLEMENTADA | Logs e código de saída do processo real |
 | Mundo jogável carrega | NÃO TESTADA | Teste em dispositivo e versão identificados |
