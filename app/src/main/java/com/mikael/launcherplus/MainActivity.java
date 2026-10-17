@@ -309,17 +309,41 @@ public final class MainActivity extends Activity {
         spinnerParams.topMargin = dp(12);
         versionsCard.addView(versionSpinner, spinnerParams);
 
-        versionsCard.addView(text("1. Selecione a versão do Minecraft", 14, TEXT, true));
+        versionsCard.addView(text("1. Versão do Minecraft", 14, TEXT, true));
+
+        versionsCard.addView(text("2. Nome da versão", 14, TEXT, true));
+        instanceNameInput = new EditText(this);
+        instanceNameInput.setSingleLine(true);
+        instanceNameInput.setTextSize(15);
+        instanceNameInput.setTextColor(TEXT);
+        instanceNameInput.setHintTextColor(MUTED);
+        instanceNameInput.setHint("Ex.: Survival 1.12.2");
+        instanceNameInput.setPadding(dp(12), 0, dp(12), 0);
+        instanceNameInput.setBackground(roundRect(BACKGROUND, 12, BORDER, 1));
+        LinearLayout.LayoutParams instanceNameParams = params(-1, dp(50));
+        instanceNameParams.topMargin = dp(8);
+        versionsCard.addView(instanceNameInput, instanceNameParams);
+
+        versionsCard.addView(text("3. Modloader", 14, TEXT, true));
+        loaderSpinner = new Spinner(this);
+        ArrayAdapter<String> loaderAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item,
+                new String[]{"Vanilla", "Forge", "Fabric", "Quilt", "NeoForge", "OptiFine", "Forge + OptiFine"});
+        loaderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        loaderSpinner.setAdapter(loaderAdapter);
+        LinearLayout.LayoutParams loaderParams = params(-1, dp(50));
+        loaderParams.topMargin = dp(8);
+        versionsCard.addView(loaderSpinner, loaderParams);
 
         TextView creationFlowNote = text(
-                "Escolha a versão do Minecraft acima e depois selecione o modloader. "
-                        + "O motor integrado instala os componentes compatíveis antes de iniciar o jogo.",
+                "Escolha a versão do Minecraft, dê um nome, selecione o modloader e toque uma vez em BAIXAR. "
+                        + "O motor integrado deve obter os arquivos e dependências compatíveis; se não houver suporte, mostrará um erro.",
                 13, MUTED, false);
         LinearLayout.LayoutParams creationFlowNoteParams = params(-1, -2);
         creationFlowNoteParams.topMargin = dp(8);
         versionsCard.addView(creationFlowNote, creationFlowNoteParams);
 
-        Button createVersionButton = primaryButton("CRIAR VERSÃO E BAIXAR", true);
+        Button createVersionButton = primaryButton("BAIXAR VERSÃO E COMPONENTES", true);
         LinearLayout.LayoutParams createVersionParams = params(-1, dp(50));
         createVersionParams.topMargin = dp(10);
         versionsCard.addView(createVersionButton, createVersionParams);
@@ -1055,45 +1079,36 @@ public final class MainActivity extends Activity {
     }
 
     private void createLocalInstance() {
-        if (instanceManager == null || versionSpinner == null) {
-            Toast.makeText(this, "O gerenciador de versões não está disponível.", Toast.LENGTH_LONG).show();
+        if (instanceManager == null || versionSpinner == null || instanceNameInput == null
+                || loaderSpinner == null) {
+            Toast.makeText(this, "O formulário de versões ainda não está pronto.", Toast.LENGTH_LONG).show();
             return;
         }
         Object selected = versionSpinner.getSelectedItem();
         String version = selected == null ? "" : String.valueOf(selected).trim();
         if (version.isEmpty() || !version.matches("[A-Za-z0-9._-]{1,100}")) {
-            Toast.makeText(this, "Toque em CONSULTAR VERSÕES e selecione uma versão na lista.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Toque em CONSULTAR VERSÕES e selecione uma versão do Minecraft.", Toast.LENGTH_LONG).show();
             return;
         }
-        showLoaderChoiceDialog("", version);
-    }
-
-    private void showLoaderChoiceDialog(String name, String version) {
-        String[] loaderOptions = {"Vanilla", "Forge", "Fabric", "Quilt", "NeoForge", "OptiFine", "Forge + OptiFine"};
-        Spinner loaderChoice = new Spinner(this);
-        ArrayAdapter<String> loaderChoiceAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, loaderOptions);
-        loaderChoiceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        loaderChoice.setAdapter(loaderChoiceAdapter);
-
-        LinearLayout loaderDialogContent = new LinearLayout(this);
-        loaderDialogContent.setOrientation(LinearLayout.VERTICAL);
-        loaderDialogContent.setPadding(dp(20), dp(8), dp(20), dp(8));
-        loaderDialogContent.addView(text("2. Escolha o modloader", 14, TEXT, true));
-        loaderDialogContent.addView(text("Minecraft " + version + "\\nAgora escolha o modloader.", 14, MUTED, false));
-        loaderDialogContent.addView(loaderChoice, params(-1, dp(52)));
-
-        new AlertDialog.Builder(this)
-                .setTitle("Escolha o modloader")
-                .setView(loaderDialogContent)
-                .setNegativeButton("CANCELAR", (dialog, which) -> dialog.dismiss())
-                .setPositiveButton("CRIAR E BAIXAR", (dialog, which) -> {
-                    String loader = String.valueOf(loaderChoice.getSelectedItem());
-                    String profileName = (name == null || name.trim().isEmpty())
-                            ? "Minecraft " + version + " - " + loader : name.trim();
-                    createAndInstallVersion(profileName, version, loader);
-                })
-                .show();
+        String name = instanceNameInput.getText().toString().trim();
+        if (name.isEmpty()) {
+            instanceNameInput.setError("Digite um nome para esta versão");
+            instanceNameInput.requestFocus();
+            Toast.makeText(this, "Digite o nome da versão.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!name.matches("[A-Za-z0-9][A-Za-z0-9 _.-]{0,31}") || ".".equals(name) || "..".equals(name)) {
+            instanceNameInput.setError("Use até 32 letras, números, espaços, ponto, _ ou -");
+            instanceNameInput.requestFocus();
+            return;
+        }
+        Object selectedLoader = loaderSpinner.getSelectedItem();
+        String loader = selectedLoader == null ? "" : String.valueOf(selectedLoader);
+        if (loader.isEmpty()) {
+            Toast.makeText(this, "Selecione um modloader.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        createAndInstallVersion(name, version, loader);
     }
 
     private void createAndInstallVersion(String name, String version, String loader) {
@@ -1106,8 +1121,8 @@ public final class MainActivity extends Activity {
 
             boolean opened = MinecraftEngineBridge.openVersionInstaller(this, version, loader, name);
             if (opened) {
-                String message = "Versão " + version + " • " + loader
-                        + "\\nO instalador do motor foi aberto. Conclua as etapas exibidas para baixar os componentes.";
+                String message = "Solicitação enviada ao motor: " + name + "\\nMinecraft " + version
+                        + " • " + loader + "\\nO motor está iniciando a instalação dos arquivos e dependências.";
                 if (installStatusOutput != null) installStatusOutput.setText(message);
                 Toast.makeText(this, loader.equals("Vanilla")
                         ? "Preparando o Minecraft " + version + " no motor."
