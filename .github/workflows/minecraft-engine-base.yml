@@ -1039,6 +1039,224 @@ jobs:
           
           PY
 
+      - name: Preserve chosen version profile name across engine installation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          
+          root = Path("upstream/Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch")
+          
+          def replace_once(source, old, new, label):
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(label + ": expected 1 match, found " + str(count))
+              return source.replace(old, new, 1)
+          
+          name_extra = "com.mikael.launcherplus.extra.REQUESTED_PROFILE_NAME"
+          valid_name = '[A-Za-z0-9][A-Za-z0-9 _.-]{0,31}'
+          
+          # Forward the version's user-visible name through the storage permission/bootstrap screen.
+          bootstrap_path = root / "TestStorageActivity.java"
+          bootstrap = bootstrap_path.read_text()
+          loader_forward = '''        String requestedLoader = getIntent().getStringExtra("com.mikael.launcherplus.extra.REQUESTED_LOADER");
+                  if ("Vanilla".equals(requestedLoader) || "Forge".equals(requestedLoader) || "Fabric".equals(requestedLoader) || "Quilt".equals(requestedLoader) || "NeoForge".equals(requestedLoader) || "OptiFine".equals(requestedLoader) || "Forge + OptiFine".equals(requestedLoader)) {
+                      intent.putExtra("com.mikael.launcherplus.extra.REQUESTED_LOADER", requestedLoader);
+                  }'''
+          bootstrap = replace_once(bootstrap, loader_forward, loader_forward + '''
+                  String requestedProfileName = getIntent().getStringExtra("''' + name_extra + '''");
+                  if (requestedProfileName != null && requestedProfileName.matches("''' + valid_name + '''")) {
+                      intent.putExtra("''' + name_extra + '''", requestedProfileName.trim());
+                  }''', "forward selected profile name")
+          bootstrap_path.write_text(bootstrap)
+          
+          launcher_path = root / "LauncherActivity.java"
+          launcher = launcher_path.read_text()
+          launcher = replace_once(
+              launcher,
+              "    private String mikaelRequestedLoader;",
+              "    private String mikaelRequestedLoader;\n    private String mikaelRequestedProfileName;",
+              "profile name field"
+          )
+          launcher = replace_once(
+              launcher,
+              '        mikaelRequestedLoader = getIntent().getStringExtra("com.mikael.launcherplus.extra.REQUESTED_LOADER");',
+              '        mikaelRequestedLoader = getIntent().getStringExtra("com.mikael.launcherplus.extra.REQUESTED_LOADER");\n'
+              '        mikaelRequestedProfileName = getIntent().getStringExtra("' + name_extra + '");',
+              "read requested profile name"
+          )
+          
+          # Native Vanilla installs use the chosen label on the actual Amethyst profile.
+          launcher = replace_once(
+              launcher,
+          '''            profile.lastVersionId = mikaelRequestedVersion;
+                      LauncherProfiles.mainProfileJson.profiles.put(selectedProfile, profile);
+                      LauncherProfiles.write();
+                      mikaelRequestedVersion = null;
+                      getIntent().removeExtra("com.mikael.launcherplus.extra.REQUESTED_VERSION");
+                      ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true);''',
+          '''            profile.lastVersionId = mikaelRequestedVersion;
+                      if (mikaelRequestedProfileName != null
+                              && mikaelRequestedProfileName.matches("''' + valid_name + '''")) {
+                          profile.name = mikaelRequestedProfileName.trim();
+                      }
+                      LauncherProfiles.mainProfileJson.profiles.put(selectedProfile, profile);
+                      LauncherProfiles.write();
+                      mikaelRequestedVersion = null;
+                      mikaelRequestedProfileName = null;
+                      getIntent().removeExtra("com.mikael.launcherplus.extra.REQUESTED_VERSION");
+                      getIntent().removeExtra("''' + name_extra + '''");
+                      ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true);''',
+              "name actual Vanilla profile"
+          )
+          
+          # Pass name into the correct native modloader install screen.
+          launcher = replace_once(
+              launcher,
+          '''            Bundle args = new Bundle();
+                      args.putString("mikael_requested_game_version", gameVersion);
+                      boolean combine = "Forge + OptiFine".equals(loader);''',
+          '''            Bundle args = new Bundle();
+                      args.putString("mikael_requested_game_version", gameVersion);
+                      args.putString("mikael_requested_profile_name", mikaelRequestedProfileName);
+                      boolean combine = "Forge + OptiFine".equals(loader);''',
+              "pass profile name to native loader screen"
+          )
+          launcher = replace_once(
+              launcher,
+          '''            mikaelRequestedLoader = null;
+                      mikaelRequestedVersion = null;
+                      getIntent().removeExtra("com.mikael.launcherplus.extra.REQUESTED_LOADER");
+                      getIntent().removeExtra("com.mikael.launcherplus.extra.REQUESTED_VERSION");
+          
+                      if ("Forge".equals(loader) || combine) {''',
+          '''            mikaelRequestedLoader = null;
+                      mikaelRequestedVersion = null;
+                      mikaelRequestedProfileName = null;
+                      getIntent().removeExtra("com.mikael.launcherplus.extra.REQUESTED_LOADER");
+                      getIntent().removeExtra("com.mikael.launcherplus.extra.REQUESTED_VERSION");
+                      getIntent().removeExtra("''' + name_extra + '''");
+          
+                      if ("Forge".equals(loader) || combine) {''',
+              "clear forwarded version name after routing"
+          )
+          
+          # Keep the custom profile name while native Forge/NeoForge/OptiFine installer GUI runs.
+          forge_path = root / "fragments/ForgeInstallFragment.java"
+          forge = forge_path.read_text()
+          forge = replace_once(
+              forge,
+          '''                .putString("pending_game_version", gameVersion)
+                          .putBoolean("pending_optifine_after_forge", combine)''',
+          '''                .putString("pending_game_version", gameVersion)
+                          .putString("pending_profile_name", getArguments() == null ? "" : getArguments().getString("mikael_requested_profile_name", ""))
+                          .putBoolean("pending_optifine_after_forge", combine)''',
+              "persist requested name through Forge install"
+          )
+          forge_path.write_text(forge)
+          
+          neoforge_path = root / "fragments/NeoForgeInstallFragment.java"
+          neoforge = neoforge_path.read_text()
+          neoforge = replace_once(
+              neoforge,
+          '''                .putString("pending_game_version", gameVersion)
+                          .putBoolean("pending_optifine_after_forge", false)''',
+          '''                .putString("pending_game_version", gameVersion)
+                          .putString("pending_profile_name", getArguments() == null ? "" : getArguments().getString("mikael_requested_profile_name", ""))
+                          .putBoolean("pending_optifine_after_forge", false)''',
+              "persist requested name through NeoForge install"
+          )
+          neoforge_path.write_text(neoforge)
+          
+          optifine_path = root / "fragments/OptiFineInstallFragment.java"
+          optifine = optifine_path.read_text()
+          optifine = replace_once(
+              optifine,
+          '''                File gameDir = Tools.getGameDirPath(forgeProfile);''',
+          '''                String requestedName = getArguments() == null ? "" : getArguments().getString("mikael_requested_profile_name", "");
+                          if (requestedName.matches("''' + valid_name + '''")) forgeProfile.name = requestedName.trim();
+                          File gameDir = Tools.getGameDirPath(forgeProfile);''',
+              "name Forge profile when adding OptiFine"
+          )
+          optifine = replace_once(
+              optifine,
+          '''                .putString("pending_game_version", gameVersion)
+                          .putBoolean("pending_optifine_after_forge", false)''',
+          '''                .putString("pending_game_version", gameVersion)
+                          .putString("pending_profile_name", getArguments() == null ? "" : getArguments().getString("mikael_requested_profile_name", ""))
+                          .putBoolean("pending_optifine_after_forge", false)''',
+              "persist requested name through OptiFine install"
+          )
+          optifine_path.write_text(optifine)
+          
+          # Fabric/Quilt create their version record in the shared native screen; name it before writing launcher_profiles.json.
+          fabric_path = root / "fragments/FabriclikeInstallFragment.java"
+          fabric = fabric_path.read_text()
+          fabric = replace_once(
+              fabric,
+          '''                            if (id.startsWith(wantedPrefix)
+                                              && id.endsWith("-" + mikaelRequestedGameVersion.toLowerCase(java.util.Locale.ROOT))) {
+                                          selectedKey = key;
+                                          break;
+                                      }''',
+          '''                            if (id.startsWith(wantedPrefix)
+                                              && id.endsWith("-" + mikaelRequestedGameVersion.toLowerCase(java.util.Locale.ROOT))) {
+                                          String requestedName = getArguments() == null ? "" : getArguments().getString("mikael_requested_profile_name", "");
+                                          if (requestedName.matches("''' + valid_name + '''")) profile.name = requestedName.trim();
+                                          selectedKey = key;
+                                          break;
+                                      }''',
+              "name Fabric and Quilt profiles"
+          )
+          fabric_path.write_text(fabric)
+          
+          # Resume after native installer: rename the real profile before game launch; Forge+OptiFine passes its label into phase two.
+          pending_anchor = '''                      String gameVersion = prefs.getString("pending_game_version", "");
+                                if (gameVersion == null || !gameVersion.matches("[A-Za-z0-9._-]{1,100}")) {'''
+          pending_new = '''                      String gameVersion = prefs.getString("pending_game_version", "");
+                                String requestedProfileName = prefs.getString("pending_profile_name", "");
+                                if (gameVersion == null || !gameVersion.matches("[A-Za-z0-9._-]{1,100}")) {'''
+          launcher = replace_once(launcher, pending_anchor, pending_new, "read pending native profile name")
+          # The current generated launcher method is in launcher before the fragments are patched in the later sections above.
+          # Re-read it because the routing source was already modified; update the pending installer branch in the same source.
+          launcher = replace_once(
+              launcher,
+          '''                          prefs.edit().remove("pending_optifine_after_forge").remove("pending_native_installer")
+                                            .remove("pending_native_loader").remove("pending_game_version").apply();
+                                    Bundle args = new Bundle();
+                                    args.putString("mikael_requested_game_version", gameVersion);
+                                    args.putBoolean("mikael_combine_forge", true);''',
+          '''                          prefs.edit().remove("pending_optifine_after_forge").remove("pending_native_installer")
+                                            .remove("pending_native_loader").remove("pending_game_version").remove("pending_profile_name").apply();
+                                    Bundle args = new Bundle();
+                                    args.putString("mikael_requested_game_version", gameVersion);
+                                    args.putString("mikael_requested_profile_name", requestedProfileName);
+                                    args.putBoolean("mikael_combine_forge", true);''',
+              "preserve name across Forge plus OptiFine"
+          )
+          launcher = replace_once(
+              launcher,
+          '''                      LauncherPreferences.DEFAULT_PREF.edit()
+                                        .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, profileKey).apply();
+                                LauncherProfiles.write();
+                                prefs.edit().remove("pending_native_installer").remove("pending_native_loader")
+                                        .remove("pending_optifine_after_forge").remove("pending_game_version").apply();''',
+          '''                      MinecraftProfile installedProfile = LauncherProfiles.mainProfileJson.profiles.get(profileKey);
+                                if (installedProfile != null && requestedProfileName.matches("''' + valid_name + '''")) {
+                                    installedProfile.name = requestedProfileName.trim();
+                                }
+                                LauncherPreferences.DEFAULT_PREF.edit()
+                                        .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, profileKey).apply();
+                                LauncherProfiles.write();
+                                prefs.edit().remove("pending_native_installer").remove("pending_native_loader")
+                                        .remove("pending_optifine_after_forge").remove("pending_game_version")
+                                        .remove("pending_profile_name").apply();''',
+              "rename installed Forge NeoForge or OptiFine profile"
+          )
+          # Write LauncherActivity after the latest modifications.
+          launcher_path.write_text(launcher)
+          
+          PY
+
       - name: Validate integrated Java source without packaging APK
         if: github.event_name == 'push' || inputs.mode == 'validate'
         working-directory: upstream/Amethyst-Android
