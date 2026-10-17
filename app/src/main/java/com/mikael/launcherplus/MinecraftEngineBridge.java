@@ -21,6 +21,20 @@ public final class MinecraftEngineBridge {
     private MinecraftEngineBridge() { }
 
     public static boolean openInstalledEngine(Activity activity) {
+        String ownPackage = activity.getPackageName();
+        if ("org.angelauramc.amethyst.debug".equals(ownPackage)
+                || "org.angelauramc.amethyst".equals(ownPackage)) {
+            // In the integrated engine APK, use its own storage/component bootstrap.
+            Intent internalIntent = new Intent();
+            internalIntent.setClassName(ownPackage, "net.kdt.pojavlaunch.TestStorageActivity");
+            try {
+                activity.startActivity(internalIntent);
+                return true;
+            } catch (ActivityNotFoundException | SecurityException ignored) {
+                return false;
+            }
+        }
+
         PackageManager packageManager = activity.getPackageManager();
         for (String packageName : ENGINE_PACKAGES) {
             try {
