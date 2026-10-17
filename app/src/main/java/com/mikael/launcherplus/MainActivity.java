@@ -22,6 +22,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.HorizontalScrollView;
 import android.widget.Spinner;
 import android.widget.ArrayAdapter;
 import android.content.SharedPreferences;
@@ -47,7 +48,10 @@ import java.util.List;
 public final class MainActivity extends Activity {
     private static final int BACKGROUND = 0xFF080D0B;
     private static final int SURFACE = 0xFF111A16;
+    private static final int SURFACE_RAISED = 0xFF142019;
+    private static final int BORDER = 0xFF294738;
     private static final int EMERALD = 0xFF00D68F;
+    private static final int EMERALD_DIM = 0xFF153D2D;
     private static final int TEXT = 0xFFF0F7F3;
     private static final int MUTED = 0xFF9EB3A8;
     private static final String VERSION_MANIFEST =
@@ -129,30 +133,90 @@ public final class MainActivity extends Activity {
         page.setPadding(dp(22), dp(24), dp(22), dp(28));
         scroll.addView(page);
 
-        page.addView(text("MIKAEL PROJECTS  /  ANDROID", 12, EMERALD, true));
+        LinearLayout brandRow = new LinearLayout(this);
+        brandRow.setOrientation(LinearLayout.HORIZONTAL);
+        brandRow.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView title = text("Mikael Launcher\nPlus", 32, TEXT, true);
+        TextView brandMark = text("M+", 19, BACKGROUND, true);
+        brandMark.setGravity(Gravity.CENTER);
+        brandMark.setBackground(roundRect(EMERALD, 15, 0xFF4AF0B0, 1));
+        brandRow.addView(brandMark, params(dp(50), dp(50)));
+
+        LinearLayout brandCopy = new LinearLayout(this);
+        brandCopy.setOrientation(LinearLayout.VERTICAL);
+        brandCopy.setPadding(dp(12), 0, dp(6), 0);
+        brandCopy.addView(text("MIKAEL LAUNCHER PLUS", 13, TEXT, true));
+        TextView platformLabel = text("MINECRAFT JAVA  •  ANDROID", 10, MUTED, true);
+        LinearLayout.LayoutParams platformParams = params(-2, -2);
+        platformParams.topMargin = dp(4);
+        brandCopy.addView(platformLabel, platformParams);
+        brandRow.addView(brandCopy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView previewTag = text("PRÉVIA", 10, BACKGROUND, true);
+        previewTag.setGravity(Gravity.CENTER);
+        previewTag.setPadding(dp(10), dp(7), dp(10), dp(7));
+        previewTag.setBackground(roundRect(EMERALD, 12, 0xFF4AF0B0, 1));
+        brandRow.addView(previewTag, params(-2, -2));
+        page.addView(brandRow);
+
+        TextView title = text("Seu Minecraft.\\nDo seu jeito.", 29, TEXT, true);
         LinearLayout.LayoutParams titleParams = params(-1, -2);
-        titleParams.topMargin = dp(10);
+        titleParams.topMargin = dp(22);
         page.addView(title, titleParams);
 
         TextView intro = text(
-                "Sua central para Minecraft Java. Consulte o manifesto oficial de versões. "
-                        + "A inicialização do jogo ainda está em desenvolvimento.",
-                15, MUTED, false);
+                "Organize versões, instâncias, mods e diagnóstico em um só lugar. "
+                        + "A inicialização integrada do jogo ainda está em desenvolvimento.",
+                14, MUTED, false);
         LinearLayout.LayoutParams introParams = params(-1, -2);
-        introParams.topMargin = dp(12);
+        introParams.topMargin = dp(10);
         page.addView(intro, introParams);
+
+        HorizontalScrollView sectionScroll = new HorizontalScrollView(this);
+        sectionScroll.setHorizontalScrollBarEnabled(false);
+        sectionScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        LinearLayout sectionRail = new LinearLayout(this);
+        sectionRail.setOrientation(LinearLayout.HORIZONTAL);
+        sectionRail.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView navVersions = navChip("Versões");
+        TextView navInstances = navChip("Instâncias");
+        TextView navMods = navChip("Mods");
+        TextView navDevice = navChip("Dispositivo");
+        TextView navSettings = navChip("Ajustes");
+        sectionRail.addView(navVersions, params(-2, -1));
+        LinearLayout.LayoutParams navChipParams = params(-2, -1);
+        navChipParams.leftMargin = dp(8);
+        sectionRail.addView(navInstances, navChipParams);
+        navChipParams = params(-2, -1);
+        navChipParams.leftMargin = dp(8);
+        sectionRail.addView(navMods, navChipParams);
+        navChipParams = params(-2, -1);
+        navChipParams.leftMargin = dp(8);
+        sectionRail.addView(navDevice, navChipParams);
+        navChipParams = params(-2, -1);
+        navChipParams.leftMargin = dp(8);
+        sectionRail.addView(navSettings, navChipParams);
+        sectionScroll.addView(sectionRail);
+        LinearLayout.LayoutParams sectionScrollParams = params(-1, dp(42));
+        sectionScrollParams.topMargin = dp(18);
+        sectionScrollParams.bottomMargin = dp(2);
+        page.addView(sectionScroll, sectionScrollParams);
 
         LinearLayout statusCard = new LinearLayout(this);
         statusCard.setOrientation(LinearLayout.VERTICAL);
         statusCard.setPadding(dp(18), dp(18), dp(18), dp(18));
-        statusCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        GradientDrawable heroBackground = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{0xFF183829, 0xFF101813});
+        heroBackground.setCornerRadius(dp(20));
+        heroBackground.setStroke(dp(1), BORDER);
+        statusCard.setBackground(heroBackground);
         LinearLayout.LayoutParams cardParams = params(-1, -2);
-        cardParams.topMargin = dp(24);
+        cardParams.topMargin = dp(18);
         page.addView(statusCard, cardParams);
 
-        statusCard.addView(text("ESTADO DO PROJETO", 12, EMERALD, true));
+        statusCard.addView(text("ESTADO DO PROJETO  •  0.1.0", 12, EMERALD, true));
         TextView state = text("Base Android pronta para validação", 19, TEXT, true);
         LinearLayout.LayoutParams stateParams = params(-1, -2);
         stateParams.topMargin = dp(9);
@@ -167,7 +231,7 @@ public final class MainActivity extends Activity {
         detailParams.topMargin = dp(10);
         statusCard.addView(detail, detailParams);
 
-        Button play = button("ABRIR MOTOR PARA TESTE MANUAL", true);
+        Button play = primaryButton("ABRIR MOTOR PARA TESTE MANUAL", true);
         LinearLayout.LayoutParams playParams = params(-1, dp(54));
         playParams.topMargin = dp(20);
         page.addView(play, playParams);
@@ -187,10 +251,11 @@ public final class MainActivity extends Activity {
         LinearLayout versionsCard = new LinearLayout(this);
         versionsCard.setOrientation(LinearLayout.VERTICAL);
         versionsCard.setPadding(dp(18), dp(18), dp(18), dp(18));
-        versionsCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        versionsCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams versionsCardParams = params(-1, -2);
         versionsCardParams.topMargin = dp(20);
         page.addView(versionsCard, versionsCardParams);
+        navVersions.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, versionsCard.getTop() - dp(12))));
 
         versionsCard.addView(text("VERSÕES OFICIAIS", 12, EMERALD, true));
         versionsOutput = text(
@@ -200,7 +265,7 @@ public final class MainActivity extends Activity {
         outputParams.topMargin = dp(10);
         versionsCard.addView(versionsOutput, outputParams);
 
-        versionsButton = button("CONSULTAR VERSÕES OFICIAIS", true);
+        versionsButton = primaryButton("CONSULTAR VERSÕES OFICIAIS", true);
         LinearLayout.LayoutParams versionsButtonParams = params(-1, dp(50));
         versionsButtonParams.topMargin = dp(14);
         versionsCard.addView(versionsButton, versionsButtonParams);
@@ -242,7 +307,7 @@ public final class MainActivity extends Activity {
         versionSearch.setHintTextColor(MUTED);
         versionSearch.setHint("Pesquisar versão (ex.: 1.12.2)");
         versionSearch.setPadding(dp(12), 0, dp(12), 0);
-        versionSearch.setBackground(roundRect(BACKGROUND, 12, 0xFF355344, 1));
+        versionSearch.setBackground(roundRect(BACKGROUND, 12, BORDER, 1));
         LinearLayout.LayoutParams searchParams = params(-1, dp(48));
         searchParams.topMargin = dp(8);
         versionsCard.addView(versionSearch, searchParams);
@@ -281,10 +346,11 @@ public final class MainActivity extends Activity {
         LinearLayout instancesCard = new LinearLayout(this);
         instancesCard.setOrientation(LinearLayout.VERTICAL);
         instancesCard.setPadding(dp(18), dp(18), dp(18), dp(18));
-        instancesCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        instancesCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams instancesCardParams = params(-1, -2);
         instancesCardParams.topMargin = dp(14);
         page.addView(instancesCard, instancesCardParams);
+        navInstances.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, instancesCard.getTop() - dp(12))));
         instancesCard.addView(text("INSTÂNCIAS LOCAIS", 12, EMERALD, true));
         TextView instancesNote = text(
                 "Crie perfis separados com pastas para mods, saves, configurações e logs. "
@@ -301,7 +367,7 @@ public final class MainActivity extends Activity {
         instanceNameInput.setHintTextColor(MUTED);
         instanceNameInput.setHint("Nome da instância (ex.: Survival 1.12.2)");
         instanceNameInput.setPadding(dp(12), 0, dp(12), 0);
-        instanceNameInput.setBackground(roundRect(BACKGROUND, 12, 0xFF355344, 1));
+        instanceNameInput.setBackground(roundRect(BACKGROUND, 12, BORDER, 1));
         LinearLayout.LayoutParams instanceNameParams = params(-1, dp(50));
         instanceNameParams.topMargin = dp(12);
         instancesCard.addView(instanceNameInput, instanceNameParams);
@@ -319,7 +385,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams loaderSpinnerParams = params(-1, dp(48));
         instancesCard.addView(loaderSpinner, loaderSpinnerParams);
 
-        Button createInstanceButton = button("CRIAR INSTÂNCIA", true);
+        Button createInstanceButton = primaryButton("CRIAR INSTÂNCIA", true);
         LinearLayout.LayoutParams createInstanceParams = params(-1, dp(50));
         createInstanceParams.topMargin = dp(10);
         instancesCard.addView(createInstanceButton, createInstanceParams);
@@ -356,7 +422,7 @@ public final class MainActivity extends Activity {
         installStatusParams.topMargin = dp(10);
         instancesCard.addView(installStatusOutput, installStatusParams);
 
-        stageVanillaButton = button("BAIXAR ARQUIVOS OFICIAIS VANILLA", true);
+        stageVanillaButton = primaryButton("BAIXAR ARQUIVOS OFICIAIS VANILLA", true);
         LinearLayout.LayoutParams stageVanillaParams = params(-1, dp(50));
         stageVanillaParams.topMargin = dp(8);
         instancesCard.addView(stageVanillaButton, stageVanillaParams);
@@ -434,10 +500,11 @@ public final class MainActivity extends Activity {
         LinearLayout modsCard = new LinearLayout(this);
         modsCard.setOrientation(LinearLayout.VERTICAL);
         modsCard.setPadding(dp(18), dp(18), dp(18), dp(18));
-        modsCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        modsCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams modsCardParams = params(-1, -2);
         modsCardParams.topMargin = dp(14);
         page.addView(modsCard, modsCardParams);
+        navMods.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, modsCard.getTop() - dp(12))));
         modsCard.addView(text("GERENCIADOR DE MODS", 12, EMERALD, true));
         TextView modsNote = text(
                 "Importe arquivos JAR para a instância selecionada e remova-os quando precisar. "
@@ -483,10 +550,11 @@ public final class MainActivity extends Activity {
         LinearLayout deviceCard = new LinearLayout(this);
         deviceCard.setOrientation(LinearLayout.VERTICAL);
         deviceCard.setPadding(dp(18), dp(18), dp(18), dp(18));
-        deviceCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        deviceCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams deviceCardParams = params(-1, -2);
         deviceCardParams.topMargin = dp(12);
         page.addView(deviceCard, deviceCardParams);
+        navDevice.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, deviceCard.getTop() - dp(12))));
         deviceCard.addView(text("DIAGNÓSTICO DO DISPOSITIVO", 12, EMERALD, true));
         deviceOutput = text("Carregando informações do Android...", 14, MUTED, false);
         LinearLayout.LayoutParams deviceOutputParams = params(-1, -2);
@@ -512,10 +580,11 @@ public final class MainActivity extends Activity {
         LinearLayout settingsCard = new LinearLayout(this);
         settingsCard.setOrientation(LinearLayout.VERTICAL);
         settingsCard.setPadding(dp(18), dp(18), dp(18), dp(18));
-        settingsCard.setBackground(roundRect(SURFACE, 18, 0xFF20352B, 1));
+        settingsCard.setBackground(roundRect(SURFACE_RAISED, 20, BORDER, 1));
         LinearLayout.LayoutParams settingsCardParams = params(-1, -2);
         settingsCardParams.topMargin = dp(14);
         page.addView(settingsCard, settingsCardParams);
+        navSettings.setOnClickListener(v -> scroll.smoothScrollTo(0, Math.max(0, settingsCard.getTop() - dp(12))));
         settingsCard.addView(text("PREFERÊNCIAS DO LAUNCHER", 12, EMERALD, true));
         TextView settingsNote = text("As preferências são salvas no aparelho, mas ainda não são aplicadas ao Minecraft até a integração do motor.", 13, MUTED, false);
         LinearLayout.LayoutParams settingsNoteParams = params(-1, -2);
@@ -1592,8 +1661,8 @@ public final class MainActivity extends Activity {
     private void addModule(LinearLayout parent, String heading, String description) {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.VERTICAL);
-        item.setPadding(dp(15), dp(14), dp(15), dp(14));
-        item.setBackground(roundRect(SURFACE, 14, 0x0020352B, 0));
+        item.setPadding(dp(16), dp(15), dp(16), dp(15));
+        item.setBackground(roundRect(SURFACE_RAISED, 16, BORDER, 1));
         LinearLayout.LayoutParams itemParams = params(-1, -2);
         itemParams.topMargin = dp(10);
         parent.addView(item, itemParams);
@@ -1608,12 +1677,34 @@ public final class MainActivity extends Activity {
         Button button = new Button(this);
         button.setText(label);
         button.setAllCaps(false);
-        button.setTextSize(14);
+        button.setTextSize(13);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        button.setTextColor(enabled ? BACKGROUND : MUTED);
+        button.setTextColor(enabled ? EMERALD : MUTED);
         button.setEnabled(enabled);
-        button.setBackground(roundRect(enabled ? EMERALD : SURFACE, 14, 0xFF20352B, 1));
+        button.setMinHeight(dp(48));
+        button.setPadding(dp(14), dp(8), dp(14), dp(8));
+        button.setBackground(roundRect(enabled ? SURFACE_RAISED : SURFACE, 15,
+                enabled ? BORDER : 0xFF1B2922, 1));
         return button;
+    }
+
+    private Button primaryButton(String label, boolean enabled) {
+        Button button = button(label, enabled);
+        button.setTextColor(enabled ? BACKGROUND : MUTED);
+        button.setBackground(roundRect(enabled ? EMERALD : SURFACE, 16,
+                enabled ? 0xFF4AF0B0 : BORDER, 1));
+        return button;
+    }
+
+    private TextView navChip(String label) {
+        TextView chip = text(label, 12, TEXT, true);
+        chip.setGravity(Gravity.CENTER);
+        chip.setPadding(dp(14), dp(8), dp(14), dp(8));
+        chip.setBackground(roundRect(SURFACE_RAISED, 24, BORDER, 1));
+        chip.setClickable(true);
+        chip.setFocusable(true);
+        chip.setContentDescription("Ir para a seção " + label);
+        return chip;
     }
 
     private TextView text(String value, int sizeSp, int color, boolean bold) {
@@ -1622,6 +1713,7 @@ public final class MainActivity extends Activity {
         view.setTextSize(sizeSp);
         view.setTextColor(color);
         if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        view.setLetterSpacing(bold ? 0.01f : 0.0f);
         view.setIncludeFontPadding(true);
         return view;
     }
