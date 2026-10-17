@@ -74,7 +74,9 @@ public final class MainActivity extends Activity {
     private ModCompatibilityChecker modCompatibilityChecker;
     private DiagnosticLogManager diagnosticLogManager;
     private VersionArtifactInstaller versionArtifactInstaller;
+    private InstanceReadinessChecker instanceReadinessChecker;
     private Button stageVanillaButton;
+    private Button diagnoseInstanceButton;
     private TextView installStatusOutput;
     private TextView modsOutput;
     private boolean updatingInstances = false;
@@ -350,6 +352,12 @@ public final class MainActivity extends Activity {
         instancesCard.addView(stageVanillaButton, stageVanillaParams);
         stageVanillaButton.setOnClickListener(v -> stageVanillaArtifacts());
 
+        diagnoseInstanceButton = button("VERIFICAR INTEGRIDADE DA INSTÂNCIA", true);
+        LinearLayout.LayoutParams diagnoseInstanceParams = params(-1, dp(50));
+        diagnoseInstanceParams.topMargin = dp(8);
+        instancesCard.addView(diagnoseInstanceButton, diagnoseInstanceParams);
+        diagnoseInstanceButton.setOnClickListener(v -> diagnoseSelectedInstance());
+
         Button deleteInstanceButton = button("EXCLUIR INSTÂNCIA SELECIONADA", true);
         LinearLayout.LayoutParams deleteInstanceParams = params(-1, dp(48));
         deleteInstanceParams.topMargin = dp(10);
@@ -361,12 +369,14 @@ public final class MainActivity extends Activity {
             instanceModManager = new InstanceModManager(instanceManager);
             modCompatibilityChecker = new ModCompatibilityChecker(instanceManager, instanceModManager);
             versionArtifactInstaller = new VersionArtifactInstaller(instanceManager);
+            instanceReadinessChecker = new InstanceReadinessChecker(instanceManager);
             refreshInstancesList();
         } catch (Exception exception) {
             instancesOutput.setText("Gerenciador de instâncias indisponível: " + safeExceptionMessage(exception));
             createInstanceButton.setEnabled(false);
             deleteInstanceButton.setEnabled(false);
             if (stageVanillaButton != null) stageVanillaButton.setEnabled(false);
+            if (diagnoseInstanceButton != null) diagnoseInstanceButton.setEnabled(false);
         }
 
         LinearLayout modsCard = new LinearLayout(this);
@@ -905,6 +915,67 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private void diagnoseSelectedInstance() {
+        final String instanceName = selectedInstanceName();
+        if (instanceName == null || instanceReadinessChecker == null) {
+            Toast.makeText(this, "Selecione uma instância primeiro.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (diagnoseInstanceButton != null) {
+            diagnoseInstanceButton.setEnabled(false);
+            diagnoseInstanceButton.setText("VERIFICANDO INTEGRIDADE...");
+        }
+        if (installStatusOutput != null) {
+            installStatusOutput.setText("Verificando perfil, JSON da versão, tamanho e SHA-1 do JAR. Esta checagem não inicia o jogo.");
+        }
+        ioExecutor.execute(() -> {
+            String value;
+            try {
+                JSONObject report = instanceReadinessChecker.inspect(instanceName);
+                StringBuilder summary = new StringBuilder("DIAGNÓSTICO DA INSTÂNCIA — ")
+                        .append(report.optString("instanceName", instanceName))
+                        .append("\nMinecraft: ").append(report.optString("minecraftVersion", "desconhecido"))
+                        .append(" | Loader: ").append(report.optString("loader", "Vanilla"))
+                        .append("\nEstado: ").append(report.optString("status", "incompleto"))
+                        .append("\nArtefatos do cliente verificados: ")
+                        .append(report.optBoolean("clientArtifactsVerified", false) ? "sim" : "não")
+                        .append("\nPronta para iniciar: NÃO — instalação incompleta.\n\nVERIFICAÇÕES:");
+                JSONArray checks = report.optJSONArray("checks");
+                if (checks != null) {
+                    for (int i = 0; i < checks.length(); i++) {
+                        JSONObject check = checks.optJSONObject(i);
+                        if (check == null) continue;
+                        summary.append("\n• ")
+                                .append(check.optBoolean("passed", false) ? "OK — " : "PENDENTE — ")
+                                .append(check.optString("name", "verificação"))
+                                .append(": ").append(check.optString("detail", ""));
+                    }
+                }
+                summary.append("\n\nO QUE FALTA:");
+                JSONArray blockers = report.optJSONArray("blockers");
+                if (blockers == null || blockers.length() == 0) {
+                    summary.append("\nNenhum bloqueio adicional relatado; ainda é necessário testar o motor em aparelho físico.");
+                } else {
+                    for (int i = 0; i < blockers.length(); i++) {
+                        summary.append("\n• ").append(blockers.optString(i, "Requisito incompleto."));
+                    }
+                }
+                summary.append("\n\nEsta ferramenta não altera o estado de instalação e nunca marca a instância como jogável.");
+                value = summary.toString();
+            } catch (Exception exception) {
+                value = "Não foi possível verificar a instância: " + safeExceptionMessage(exception);
+            }
+            final String displayValue = value;
+            mainHandler.post(() -> {
+                if (installStatusOutput != null) installStatusOutput.setText(displayValue);
+                if (diagnoseInstanceButton != null) {
+                    diagnoseInstanceButton.setEnabled(true);
+                    diagnoseInstanceButton.setText("VERIFICAR INTEGRIDADE DA INSTÂNCIA");
+                }
+            });
+        });
+    }
+
     private JSONObject findInstanceRecord(String instanceName) throws Exception {
         if (instanceManager == null) return null;
         JSONArray records = instanceManager.getInstances();
@@ -1106,7 +1177,7 @@ public final class MainActivity extends Activity {
         }
         if (modsOutput != null) modsOutput.setText("Analisando metadados dos mods…");
         ioExecutor.execute(() -> {
-            final String reportText;
+            String reportValue;
             try {
                 JSONObject report = modCompatibilityChecker.inspect(instanceName);
                 StringBuilder summary = new StringBuilder();
@@ -1143,10 +1214,11 @@ public final class MainActivity extends Activity {
                     }
                 }
                 summary.append("\\n\\nImportante: é uma verificação estática parcial. Não instala Forge/Fabric/OptiFine, não verifica todas as faixas de versão e não prova que o jogo iniciará.");
-                reportText = summary.toString();
+                reportValue = summary.toString();
             } catch (Exception exception) {
-                reportText = "Falha na análise: " + safeExceptionMessage(exception);
+                reportValue = "Falha na análise: " + safeExceptionMessage(exception);
             }
+            final String reportText = reportValue;
             mainHandler.post(() -> {
                 if (modsOutput != null) modsOutput.setText(reportText);
             });
