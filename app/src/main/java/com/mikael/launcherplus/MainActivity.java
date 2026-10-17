@@ -152,7 +152,7 @@ public final class MainActivity extends Activity {
             String selectedVersion = getSelectedVersionForVanillaTest();
             new AlertDialog.Builder(this)
                     .setTitle("Etapa 2 — teste Vanilla")
-                    .setMessage("Versão escolhida nesta tela: " + selectedVersion + "\\n\\n"
+                    .setMessage("Versão escolhida nesta tela: " + selectedVersion + "\n\n"
                             + "Esta tela ainda consulta os metadados da Mojang, mas não instala o jogo nem transfere a versão para o motor. "
                             + "No motor, escolha a mesma versão Vanilla, conclua a autenticação compatível, aguarde os downloads e toque em Jogar. "
                             + "Depois, entre em um mundo e confirme que ele carrega. Mods e loaders ficam fora deste teste.")
