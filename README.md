@@ -18,11 +18,11 @@ Launcher Android para Minecraft: Java Edition. Este repositório está na fase i
 - [x] Projeto Android Java mínimo criado.
 - [x] Workflow automático para validar o código Java sem empacotar APK.
 - [x] Workflow de APK do motor configurado para execução manual, somente quando solicitado.
-- [x] Workflow separado para compilar uma base de motor Minecraft Android upstream, em revisão de compatibilidade/licenças.
+- [x] Workflow separado para preparar a integração do motor Android upstream; o modo padrão valida o código integrado sem empacotar APK.
 - [x] Revisão inicial do erro de CI: a action de setup do Android SDK tentava instalar o pacote legado inexistente `tools`; os workflows foram alterados para usar o SDK pré-instalado no runner e instalar as plataformas necessárias.
-- [ ] Validar compilação do código Java no GitHub Actions sem gerar APK.
-- [ ] Quando solicitado, validar o build manual do motor integrado.
-- [ ] Executar e validar o workflow manual de integração do motor (somente quando Mikael autorizar a geração de APK).
+- [ ] Validar compilação do código Java do app no GitHub Actions sem gerar APK.
+- [ ] Executar o modo `validate` do workflow do motor para verificar a integração sem gerar APK.
+- [ ] Depois da validação de código, testar o motor integrado em aparelho físico; a geração do APK só pode ocorrer após autorização explícita.
 - [ ] Testar instalação e início de Minecraft em dispositivo físico.
 - [ ] Validar versões, loaders, contas, instâncias e mods.
 
@@ -35,9 +35,9 @@ O botão **Iniciar Minecraft** tenta abrir o app Amethyst/Pojav se estiver insta
 ## Workflows
 
 - [Android CI](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/android.yml): valida a compilação do código Java e não empacota APK.
-- [Minecraft engine base (Amethyst)](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/minecraft-engine-base.yml): workflow **manual** que clona uma revisão fixa do motor, copia a interface Mikael e as ferramentas de perfis/mods para o módulo Android do motor, troca a atividade inicial pelo dashboard Mikael e tenta compilar `:app_pojavlauncher:assembleDebug`. Não execute até Mikael pedir para gerar APK.
+- [Minecraft engine base (Amethyst)](https://github.com/mikael8367/Mikael-Launcher-plus/actions/workflows/minecraft-engine-base.yml): workflow **manual** que clona uma revisão fixa do motor e integra a interface Mikael. O modo padrão `validate` compila somente as classes Java (`compileDebugJavaWithJavac`) e não empacota APK. O modo `build` gera um APK e só deve ser escolhido depois de autorização explícita de Mikael.
 
-O workflow automático de validação compila o código Java sem empacotar APK. O workflow do motor pode gerar o APK integrado, mas só inicia manualmente; ele não foi executado nesta etapa.
+O workflow automático de validação compila o código Java sem empacotar APK. O workflow do motor também é manual e agora inicia no modo `validate`, sem gerar APK; o modo `build` é separado e condicionado à autorização explícita. A validação integrada ainda precisa ser executada.
 
 ## Base técnica e licenças
 
